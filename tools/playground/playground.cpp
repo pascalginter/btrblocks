@@ -10,6 +10,10 @@
 #include <ctime>       /* time */
 #include <fsst.h>
 #include <gflags/gflags.h>
+#include <headers/compositecodec.h>
+#include <headers/simdfastpfor.h>
+#include <headers/variablebyte.h>
+#include <headers/blockpacking.h>
 // -------------------------------------------------------------------------------------
 #include "headers/codecfactory.h"
 #include "headers/deltautil.h"
