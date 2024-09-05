@@ -52,18 +52,22 @@ std::vector<int> DirectoryReader::get_all_rowgroup_indices() {
 std::vector<int> DirectoryReader::get_all_column_indices() {
   std::vector<int> column_indices;
   for (u32 i=0; i!=file_metadata->num_columns; i++){
-    if (file_metadata->parts[i].type == ColumnType::INTEGER){
+    if (file_metadata->parts[i].type == ColumnType::INTEGER
+        || file_metadata->parts[i].type == ColumnType::DOUBLE
+        || file_metadata->parts[i].type == ColumnType::STRING){
       column_indices.push_back(i);
     }
   }
   return column_indices;
 }
 
-::arrow::Status DirectoryReader::ReadColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out) {
+template <typename T, typename U>
+::arrow::Status DirectoryReader::readNumericColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out){
   std::vector<char> buffer;
   std::vector<u8> output_buffer;
-  ::arrow::Int32Builder builder;
+  ::arrow::NumericBuilder<T> builder;
   ::arrow::ArrayVector arrays;
+
   for (u32 part_i = 0; part_i < file_metadata->parts[i].num_parts; part_i++) {
     auto path = btr_dir / ("column" + std::to_string(i) + "_part" + std::to_string(part_i));
     Utils::readFileToMemory(path.string(), buffer);
@@ -71,13 +75,56 @@ std::vector<int> DirectoryReader::get_all_column_indices() {
 
     for (u32 chunk_i = 0; chunk_i != reader.getChunkCount(); chunk_i++){
       reader.readColumn(output_buffer, chunk_i);
-      builder.AppendValues(reinterpret_cast<int32_t*>(output_buffer.data()),
+      builder.AppendValues(reinterpret_cast<U*>(output_buffer.data()),
                            reader.getChunkMetadata(chunk_i)->tuple_count).ok();
       arrays.push_back(builder.Finish().ValueOrDie());
     }
     *out = ::arrow::ChunkedArray::Make(arrays).ValueOrDie();
   }
   return ::arrow::Status::OK();
+}
+
+::arrow::Status DirectoryReader::readStringColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out){
+  ::arrow::StringBuilder builder;
+  std::vector<char> buffer;
+  std::vector<u8> output_buffer;
+  ::arrow::ArrayVector arrays;
+
+  for (u32 part_i = 0; part_i < file_metadata->parts[i].num_parts; part_i++) {
+    auto path = btr_dir / ("column" + std::to_string(i) + "_part" + std::to_string(part_i));
+    Utils::readFileToMemory(path.string(), buffer);
+    BtrReader reader(buffer.data());
+
+    for (u32 chunk_i = 0; chunk_i != reader.getChunkCount(); chunk_i++){
+      bool requiresCopy = reader.readColumn(output_buffer, chunk_i);
+
+      for (u32 j=0; j!=reader.getTupleCount(chunk_i); j++){
+        if (requiresCopy){
+          auto string_pointer_array_viewer = StringPointerArrayViewer(reinterpret_cast<const u8*>(output_buffer.data()));
+          builder.Append(string_pointer_array_viewer(j)).ok();
+        }else{
+          auto string_array_viewer = StringArrayViewer(reinterpret_cast<const u8*>(output_buffer.data()));
+          builder.Append(string_array_viewer(j)).ok();
+        }
+      }
+      arrays.push_back(builder.Finish().ValueOrDie());
+    }
+    *out = ::arrow::ChunkedArray::Make(arrays).ValueOrDie();
+  }
+  return ::arrow::Status::OK();
+}
+
+::arrow::Status DirectoryReader::ReadColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out) {
+  if (schema->field(i)->type() == ::arrow::int32()){
+    return readNumericColumn<::arrow::Int32Type, int32_t>(i, out);
+  }else if (schema->field(i)->type() == ::arrow::float64()) {
+    return readNumericColumn<::arrow::DoubleType, double>(i, out);
+  }else if (schema->field(i)->type() == ::arrow::utf8()){
+    return readStringColumn(i, out);
+  }else{
+    std::cout << "Unknown type encountered while reading column" << std::endl;
+    exit(1);
+  }
 }
 
 ::arrow::Status DirectoryReader::GetRecordBatchReader(std::shared_ptr<::arrow::RecordBatchReader>* out) {

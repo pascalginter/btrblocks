@@ -20,6 +20,10 @@ class DirectoryReader {
 
   std::vector<int> get_all_rowgroup_indices();
   std::vector<int> get_all_column_indices();
+
+ template <typename T, typename U>
+ ::arrow::Status readNumericColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out);
+ ::arrow::Status readStringColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out);
 public:
   DirectoryReader(std::string dir);
 
