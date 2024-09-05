@@ -74,9 +74,13 @@ template <typename T, typename U>
     BtrReader reader(buffer.data());
 
     for (u32 chunk_i = 0; chunk_i != reader.getChunkCount(); chunk_i++){
+      u32 tupleCount = reader.getTupleCount(chunk_i);
       reader.readColumn(output_buffer, chunk_i);
+      auto* bitmap = reader.getBitmap(chunk_i);
+      std::vector<u8> validityBytes(tupleCount);
+      bitmap->writeValidityBytes(validityBytes.data());
       builder.AppendValues(reinterpret_cast<U*>(output_buffer.data()),
-                           reader.getChunkMetadata(chunk_i)->tuple_count).ok();
+                           static_cast<int64_t>(tupleCount), validityBytes.data()).ok();
       arrays.push_back(builder.Finish().ValueOrDie());
     }
     *out = ::arrow::ChunkedArray::Make(arrays).ValueOrDie();
@@ -95,11 +99,14 @@ template <typename T, typename U>
     Utils::readFileToMemory(path.string(), buffer);
     BtrReader reader(buffer.data());
 
+
     for (u32 chunk_i = 0; chunk_i != reader.getChunkCount(); chunk_i++){
       bool requiresCopy = reader.readColumn(output_buffer, chunk_i);
-
+      auto bitmap = reader.getBitmap(chunk_i);
       for (u32 j=0; j!=reader.getTupleCount(chunk_i); j++){
-        if (requiresCopy){
+        if (!bitmap->test(j)){
+          builder.AppendNull().ok();
+        }else if (requiresCopy){
           auto string_pointer_array_viewer = StringPointerArrayViewer(reinterpret_cast<const u8*>(output_buffer.data()));
           builder.Append(string_pointer_array_viewer(j)).ok();
         }else{

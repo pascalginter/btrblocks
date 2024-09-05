@@ -52,6 +52,23 @@ void BitmapWrapper::writeBITMAP(BITMAP* dest) {
   }
 }
 
+void BitmapWrapper::writeValidityBytes(btrblocks::BITMAP* dest){
+  auto bitset = this->get_bitset();
+  for (u32 i = 0; i < this->m_tuple_count; i++){
+    *(dest + i) = bitset->test(i) ? -1 : 0;
+  }
+}
+
+void BitmapWrapper::writeArrowBitmap(btrblocks::BITMAP* dest) {
+  auto bitset = this->get_bitset();
+
+  // Arrow bitmap: is_valid[j] -> bitmap[j / 8] & (1 << (j % 8))
+  // https://arrow.apache.org/docs/format/Columnar.html#validity-bitmaps
+  for (u32 i = 0; i < this->m_tuple_count; i++) {
+    dest[i / 8] |= bitset->test(i) ? (1 << (i % 8)) : 0;
+  }
+}
+
 std::vector<BITMAP> BitmapWrapper::writeBITMAP() {
   std::vector<BITMAP> result(this->m_tuple_count);
   writeBITMAP(result.data());
@@ -157,5 +174,41 @@ std::pair<u32, BitmapType> RoaringBitmap::compress(const BITMAP* bitmap,
 
   return {compressed_size, type};
 }
+
+std::pair<u32, BitmapType> RoaringBitmap::compressArrowBitmap(const std::shared_ptr<arrow::Array>& array,
+                                                              u8* dest) {
+  // Returns a pair of compressed size and the type of bitmap used
+
+  // Determine the bitmap type by counting 1s
+  if (array->null_bitmap_data() == nullptr || array->null_count() == 0) {
+    return {0, BitmapType::ALLONES};
+  }
+
+  if(array->null_count() == array->length()) {
+    return {0, BitmapType::ALLZEROS};
+  }
+
+  auto type = BitmapType::REGULAR;
+
+  // Write the actual bitmap
+  Roaring r;
+  for (u32 row_i = 0; row_i < array->length(); row_i++) {
+    if(!array->IsNull(row_i)) {
+      r.add(row_i);
+    }
+  }
+
+  if (static_cast<int64_t>(r.cardinality()) < array->length() / 2) {
+    r.flip(0, array->length());
+    type = BitmapType::FLIPPED;
+  }
+
+  r.runOptimize();
+  r.setCopyOnWrite(true);
+  u32 compressed_size = r.write(reinterpret_cast<char*>(dest), false);
+
+  return {compressed_size, type};
+}
+
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks::bitmap

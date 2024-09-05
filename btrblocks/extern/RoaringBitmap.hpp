@@ -2,6 +2,7 @@
 // -------------------------------------------------------------------------------------
 #include "common/Units.hpp"
 // -------------------------------------------------------------------------------------
+#include <arrow/api.h>
 #include <boost/dynamic_bitset.hpp>
 #include <roaring/roaring.hh>
 // -------------------------------------------------------------------------------------
@@ -22,6 +23,8 @@ class BitmapWrapper {
                 boost::dynamic_bitset<>* bitset = nullptr);
   virtual ~BitmapWrapper();
   void writeBITMAP(BITMAP* dest);
+  void writeArrowBitmap(BITMAP* dest);
+  void writeValidityBytes(BITMAP* dest);
   std::vector<BITMAP> writeBITMAP();
   boost::dynamic_bitset<>* get_bitset();
   void releaseBitset();
@@ -33,6 +36,8 @@ class BitmapWrapper {
 class RoaringBitmap {
  public:
   static std::pair<u32, BitmapType> compress(const BITMAP* bitmap, u8* dest, u32 tuple_count);
+  static std::pair<u32, BitmapType> compressArrowBitmap(const std::shared_ptr<arrow::Array>& array,
+                                                                u8* dest);
 };
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks::bitmap
