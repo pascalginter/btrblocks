@@ -13,6 +13,7 @@ option(WITH_LOGGING "WITH_LOGGING" OFF)
 option(SAMPLING_TEST_MODE "SAMPLING_TEST_MODE" OFF)
 option(ENABLE_FOR_SCHEME "ENABLE_FOR_SCHEME" OFF)
 option(BUILD_SHARED_LIBRARY "BUILD_SHARED_LIBRARY" OFF)
+option(BUILD_ARROW "BUILD_ARROW" ON)
 
 # -------------------------------------------------------------------------------
 # C++ build options
@@ -45,6 +46,10 @@ if (${IS_AARCH64})
   message(STATUS "SIMDE IS BEING USED")
   include("${CMAKE_VENDOR_DIR}/simde.cmake")
 endif ()
+
+#Arrow
+include("${CMAKE_VENDOR_DIR}/arrow.cmake")
+
 
 # Compression library dependencies
 include("${CMAKE_VENDOR_DIR}/fastpfor.cmake")
@@ -100,6 +105,7 @@ message(STATUS "    WITH_LOGGING                = ${WITH_LOGGING}")
 message(STATUS "    SAMPLING_TEST_MODE          = ${SAMPLING_TEST_MODE}")
 message(STATUS "    ENABLE_FOR_SCHEME           = ${ENABLE_FOR_SCHEME}")
 message(STATUS "    BUILD_SHARED_LIBRARY        = ${BUILD_SHARED_LIBRARY}")
+message(STATUS "    BUILD_ARROW                 = ${BUILD_ARROW}")
 message(STATUS "[test] settings")
 message(STATUS "    GTEST_INCLUDE_DIR           = ${GTEST_INCLUDE_DIR}")
 message(STATUS "    GTEST_LIBRARY_PATH          = ${GTEST_LIBRARY_PATH}")
