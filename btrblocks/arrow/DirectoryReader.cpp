@@ -36,7 +36,6 @@ DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
     fields.push_back(::arrow::field("", type));
   }
   schema = ::arrow::schema(fields);
-  std::cout << schema->ToString() << std::endl;
 }
 
 ::arrow::Status DirectoryReader::GetSchema(std::shared_ptr<::arrow::Schema>* out) {
@@ -52,9 +51,8 @@ std::vector<int> DirectoryReader::get_all_rowgroup_indices() {
 
 std::vector<int> DirectoryReader::get_all_column_indices() {
   std::vector<int> column_indices;
-  for (int i=0; i!= file_metadata->num_columns; i++){
+  for (u32 i=0; i!=file_metadata->num_columns; i++){
     if (file_metadata->parts[i].type == ColumnType::INTEGER){
-      std::cout << "column " << i << std::endl;
       column_indices.push_back(i);
     }
   }
@@ -66,21 +64,15 @@ std::vector<int> DirectoryReader::get_all_column_indices() {
   std::vector<u8> output_buffer;
   ::arrow::Int32Builder builder;
   ::arrow::ArrayVector arrays;
-  std::cout << "ReadColumn " << i << " of " << file_metadata->num_columns << std::endl;
   for (u32 part_i = 0; part_i < file_metadata->parts[i].num_parts; part_i++) {
     auto path = btr_dir / ("column" + std::to_string(i) + "_part" + std::to_string(part_i));
     Utils::readFileToMemory(path.string(), buffer);
     BtrReader reader(buffer.data());
 
     for (u32 chunk_i = 0; chunk_i != reader.getChunkCount(); chunk_i++){
-      std::cout << "chunk " << chunk_i << std::endl;
       reader.readColumn(output_buffer, chunk_i);
-      std::cout << "ouptutsize " << output_buffer.size() << std::endl;
-      auto* bufferdata = reinterpret_cast<int32_t*>(output_buffer.data());
-      for (int i=0; i!=5; i++) std::cout << *(bufferdata + i) << " ";
-      std::cout << endl;
       builder.AppendValues(reinterpret_cast<int32_t*>(output_buffer.data()),
-                           reader.getChunkMetadata(chunk_i)->tuple_count).Warn();
+                           reader.getChunkMetadata(chunk_i)->tuple_count).ok();
       arrays.push_back(builder.Finish().ValueOrDie());
     }
     *out = ::arrow::ChunkedArray::Make(arrays).ValueOrDie();
@@ -112,11 +104,11 @@ std::vector<int> DirectoryReader::get_all_column_indices() {
   std::vector<std::shared_ptr<::arrow::ChunkedArray>> columns(column_indices.size());
   int i = 0;
   for (int index : column_indices){
-    ReadColumn(index, &columns[i++]).Warn();
-    std::cout << columns[i-1]->ToString() << std::endl;
+    ReadColumn(index, &columns[i++]).ok();
   }
-  *out = ::arrow::Table::Make(schema, columns);
-  std::cout << out->get()->ToString() << std::endl;
+  ::arrow::FieldVector relevantFields;
+  for (auto index : column_indices) relevantFields.push_back(schema->field(index));
+  *out = ::arrow::Table::Make(::arrow::schema(relevantFields), columns);
   return ::arrow::Status::OK();
 }
 
