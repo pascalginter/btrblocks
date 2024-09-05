@@ -33,7 +33,7 @@ DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
       default:
         exit(1);
     }
-    fields.push_back(::arrow::field("", type));
+    fields.push_back(::arrow::field("c_" + std::to_string(i), type));
   }
   schema = ::arrow::schema(fields);
 }
