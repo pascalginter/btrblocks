@@ -18,11 +18,11 @@ target_link_libraries(csvtobtr btrfiles gflags tbb spdlog)
 
 add_executable(btrtoparquet ${BTR_CONVERSION_DIR}/btrtoparquet.cpp)
 target_include_directories(btrtoparquet PRIVATE ${BTR_INCLUDE_DIR})
-target_link_libraries(btrtoparquet btrblocks btrfiles gflags arrow)
+target_link_libraries(btrtoparquet btrblocks btrfiles gflags tbb arrow parquet)
 
 add_executable(parquettobtr ${BTR_CONVERSION_DIR}/parquettobtr.cpp)
 target_include_directories(parquettobtr PRIVATE ${BTR_INCLUDE_DIR})
-target_link_libraries(parquettobtr btrblocks btrfiles gflags arrow)
+target_link_libraries(parquettobtr btrblocks btrfiles gflags tbb arrow parquet)
 
 add_executable(btrmeta ${BTR_CONVERSION_DIR}/btrmeta.cpp)
 target_include_directories(btrmeta PRIVATE ${BTR_INCLUDE_DIR})

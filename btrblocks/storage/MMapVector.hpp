@@ -109,19 +109,29 @@ struct Vector<std::string_view> {
     StringIndexSlot slot[];
   };
 
+  bool isMMap;
   uint64_t fileSize;
   Data* data;
 
-  Vector() : data(nullptr) {}
-  explicit Vector(const char* pathname) { readBinary(pathname); }
+  Vector() : isMMap(false), data(nullptr) {}
+  Vector(uint64_t count, size_t totalSize) :
+        isMMap(false){
+    size_t mallocSize = sizeof(uint64_t) + count * sizeof(StringIndexSlot) + totalSize;
+    data = reinterpret_cast<Data*>(malloc(mallocSize));
+  }
+  explicit Vector(const char* pathname) : isMMap(true){ readBinary(pathname); }
   Vector(const Vector&) = delete;
-  Vector(Vector&& o) noexcept : fileSize(o.fileSize), data(o.data) {
+  Vector(Vector&& o) noexcept : isMMap(o.isMMap), fileSize(o.fileSize), data(o.data) {
     o.fileSize = 0;
     o.data = nullptr;
   }
   ~Vector() {
     if (data) {
-      die_if(munmap(data, fileSize) == 0);
+      if (isMMap) {
+        die_if(munmap(data, fileSize) == 0);
+      }else{
+        free(data);
+      }
     }
   }
 

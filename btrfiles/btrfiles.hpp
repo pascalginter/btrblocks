@@ -43,9 +43,15 @@ namespace btrblocks::files {
 /// read the binary files and return a relation. If only_type is not empty, only the
 /// btrfiles of the given column type are read.
 Relation readDirectory(const YAML::Node& schema, const string& columns_dir, const string& only_type = "");
+/// Given a relation, compress it and write it to specified directory
+void writeDirectory(const Relation& relation, std::string btr_dir, std::string stats_dir,
+                    std::string compressionout_dir, ColumnType typefilter = ColumnType::UNDEFINED,
+                    int32_t column_filter = -1, int32_t chunk_filter = -1,
+                    bool verify = false,  uint64_t  binary_creation_time = 0);
 /// Given a YAML schema, parse the given csv file and write uncompressed (!)
 /// binary files to the given output directory.
 void convertCSV(const string csv_path, const YAML::Node &schema, const string &out_dir, const string &csv_separator = "|");
+
 // ------------------------------------------------------------------------------
 } // namespace btrblocks::files
 // ------------------------------------------------------------------------------

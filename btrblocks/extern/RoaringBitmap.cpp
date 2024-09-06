@@ -175,7 +175,7 @@ std::pair<u32, BitmapType> RoaringBitmap::compress(const BITMAP* bitmap,
   return {compressed_size, type};
 }
 
-std::pair<u32, BitmapType> RoaringBitmap::compressArrowBitmap(const std::shared_ptr<arrow::Array>& array,
+std::pair<u32, BitmapType> RoaringBitmap::compressArrowBitmap(const std::shared_ptr<::arrow::Array>& array,
                                                               u8* dest) {
   // Returns a pair of compressed size and the type of bitmap used
 

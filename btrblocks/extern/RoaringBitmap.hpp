@@ -36,7 +36,7 @@ class BitmapWrapper {
 class RoaringBitmap {
  public:
   static std::pair<u32, BitmapType> compress(const BITMAP* bitmap, u8* dest, u32 tuple_count);
-  static std::pair<u32, BitmapType> compressArrowBitmap(const std::shared_ptr<arrow::Array>& array,
+  static std::pair<u32, BitmapType> compressArrowBitmap(const std::shared_ptr<::arrow::Array>& array,
                                                                 u8* dest);
 };
 // -------------------------------------------------------------------------------------

@@ -28,7 +28,6 @@ class Relation {
   void addColumn(Column&& column);
   void addColumn(const string& column_file_path);
 
- private:
   void fixTupleCount();
 };
 // -------------------------------------------------------------------------------------
