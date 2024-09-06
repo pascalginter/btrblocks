@@ -32,8 +32,6 @@ Column parseFixedSizeArrowColumn(const std::string& name,
 // TODO writing and reading should be completely unecessary but for prototyping ok
 Column parseStringArrowColumn(const std::string& name,
                               const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
-
-  std::cout << name << std::endl;
   int64_t totalLength = 0;
   for (const auto& arr : chunkedArr->chunks()) {
     totalLength += arr->data()->buffers[2]->size();
@@ -44,7 +42,6 @@ Column parseStringArrowColumn(const std::string& name,
   for (const auto& arr : chunkedArr->chunks()){
     const auto* stringOffsets = reinterpret_cast<const int32_t*>(arr->data()->buffers[1]->data());
     for (int i=0; i!=arr->length(); i++, global_i++){
-      std::cout << i << std::endl; //", " << (int*) arr->data()->buffers[0]->data() << std::endl;
       int32_t stringBegin = stringOffsets[i];
       int32_t stringEnd = stringOffsets[i+1];
       int32_t stringLength = stringEnd - stringBegin;

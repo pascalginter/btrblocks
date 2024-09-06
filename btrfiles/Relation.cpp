@@ -58,7 +58,6 @@ Relation readDirectory(const YAML::Node& schema, const string& columns_dir, cons
 void writeDirectory(const Relation& relation, std::string btr_dir, std::string stats_dir,
                     std::string compressionout_dir, ColumnType typefilter, int32_t column_filter,
                     int32_t chunk_filter, bool verify,  uint64_t  binary_creation_time){
-  std::cout << "a" << std::endl;
   // Prepare datastructures for btr compression
   auto ranges = relation.getRanges(SplitStrategy::SEQUENTIAL, 9999);
   assert(ranges.size() > 0);
@@ -90,7 +89,6 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
     if (column_filter != -1 && column_filter != column_i) {
       return;
     }
-std::cout << "b" << std::endl;
     std::vector<InputChunk> input_chunks;
     std::string path_prefix = btr_dir + "/" + "column" + std::to_string(column_i) + "_part";
     ColumnPart part;

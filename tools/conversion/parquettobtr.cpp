@@ -4,7 +4,6 @@
 
 #include <iostream>
 
-#include "arrow/DirectoryWriter.hpp"
 #include "arrow/arrow.hpp"
 
 #include "scheme/SchemePool.hpp"
