@@ -26,7 +26,7 @@ Column parseFixedSizeArrowColumn(const std::string& name,
     offset += arr->length();
   }
 
-  return {name, std::move(column_data), Column::fullBitmap(chunkedArr->length())};
+  return {name, std::move(column_data), std::move(bitmap)};
 }
 
 // TODO writing and reading should be completely unecessary but for prototyping ok
@@ -54,7 +54,7 @@ Column parseStringArrowColumn(const std::string& name,
                              : (arr->data()->buffers[0]->data()[i / 8] & (1 << i % 8));
     }
   }
-  return {name, std::move(column_data), Column::fullBitmap(chunkedArr->length())};
+  return {name, std::move(column_data), std::move(bitmap)};
 }
 
 
