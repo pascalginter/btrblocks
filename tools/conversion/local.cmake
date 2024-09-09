@@ -7,6 +7,8 @@ set(BTR_CONVERSION_DIR ${CMAKE_CURRENT_LIST_DIR})
 # ---------------------------------------------------------------------------
 # Executables
 # ---------------------------------------------------------------------------
+add_compile_options(-fsanitize=undefined)
+add_link_options(-fsanitize=undefined)
 
 add_executable(btrtocsv ${BTR_CONVERSION_DIR}/btrtocsv.cpp)
 target_include_directories(btrtocsv PRIVATE ${BTR_INCLUDE_DIR})
@@ -32,9 +34,9 @@ add_executable(decompression-speed ${BTR_CONVERSION_DIR}/decompression-speed.cpp
 target_include_directories(decompression-speed PRIVATE ${BTR_INCLUDE_DIR})
 target_link_libraries(decompression-speed btrblocks tbb gflags)
 
-add_executable(decompression-speed-s3 ${BTR_CONVERSION_DIR}/decompression-speed-s3.cpp)
-target_include_directories(decompression-speed-s3 PRIVATE ${BTR_INCLUDE_DIR})
-target_link_libraries(decompression-speed-s3 btrblocks tbb gflags libaws-cpp-sdk-core libaws-cpp-sdk-s3-crt libaws-cpp-sdk-s3)
+# add_executable(decompression-speed-s3 ${BTR_CONVERSION_DIR}/decompression-speed-s3.cpp)
+# target_include_directories(decompression-speed-s3 PRIVATE ${BTR_INCLUDE_DIR})
+# target_link_libraries(decompression-speed-s3 btrblocks tbb gflags libaws-cpp-sdk-core libaws-cpp-sdk-s3-crt libaws-cpp-sdk-s3)
 
 # ---------------------------------------------------------------------------
 # Scripts
