@@ -28,7 +28,7 @@ using namespace btrblocks;
 // -------------------------------------------------------------------------------------
 void reset_bitmaps(const FileMetadata *metadata, std::vector<std::vector<BtrReader>> &readers, std::vector<u32> &columns) {
     tbb::parallel_for_each(columns, [&](u32 column_i) {
-        tbb::parallel_for(u32(0), metadata->parts[column_i].num_parts, [&](u32 part_i) {
+        tbb::parallel_for(u32(0), metadata->columns[column_i].num_parts, [&](u32 part_i) {
             auto &reader = readers[column_i][part_i];
             tbb::parallel_for(u32(0), reader.getChunkCount(), [&](u32 chunk_i) {
                 reader.releaseBitmap(chunk_i);
@@ -46,7 +46,7 @@ u64 measure(const FileMetadata *metadata, std::vector<std::vector<BtrReader>> &r
     tbb::parallel_for_each(columns, [&](u32 column_i) {
         // TODO not sure if measuring the time like that will cause problems
         auto start_time = std::chrono::steady_clock::now();
-        tbb::parallel_for(u32(0), metadata->parts[column_i].num_parts, [&](u32 part_i) {
+        tbb::parallel_for(u32(0), metadata->columns[column_i].num_parts, [&](u32 part_i) {
             auto &reader = readers[column_i][part_i];
             tbb::parallel_for(u32(0), reader.getChunkCount(), [&](u32 chunk_i) {
                 thread_local std::vector<u8> decompressed_data;
@@ -68,7 +68,7 @@ u64 measure_single_thread(const FileMetadata *metadata, std::vector<std::vector<
 
     auto total_start_time = std::chrono::steady_clock::now();
     for (u32 column_i : columns) {
-        for (u32 part_i = 0; part_i < metadata->parts[column_i].num_parts; part_i++) {
+        for (u32 part_i = 0; part_i < metadata->columns[column_i].num_parts; part_i++) {
             auto &reader = readers[column_i][part_i];
             for (u32 chunk_i = 0; chunk_i < reader.getChunkCount(); chunk_i++) {
                 for (u32 rep = 0; rep < FLAGS_reps; rep++) {
@@ -136,14 +136,14 @@ int main(int argc, char **argv) {
 
     std::vector<u32> columns;
     if (FLAGS_column != -1) {
-        if (typefilter != ColumnType::UNDEFINED && file_metadata->parts[FLAGS_column].type != typefilter) {
+        if (typefilter != ColumnType::UNDEFINED && file_metadata->columns[FLAGS_column].type != typefilter) {
             std::cerr << "Type of selected column " << FLAGS_column << " does not match filtered type" << std::endl;
             exit(EXIT_FAILURE);
         }
         columns.push_back(FLAGS_column);
     } else if (typefilter != ColumnType::UNDEFINED) {
         for (u32 column = 0; column < file_metadata->num_columns; column++) {
-            if (file_metadata->parts[column].type == typefilter) {
+            if (file_metadata->columns[column].type == typefilter) {
                 columns.push_back(column);
             }
         }
@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
     std::vector<std::vector<BtrReader>> readers(file_metadata->num_columns);
     std::vector<std::vector<std::vector<char>>> compressed_data(file_metadata->num_columns);
     tbb::parallel_for_each(columns, [&](u32 column_i) {
-        compressed_data[column_i].resize(file_metadata->parts[column_i].num_parts);
-        for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
+        compressed_data[column_i].resize(file_metadata->columns[column_i].num_parts);
+        for (u32 part_i = 0; part_i < file_metadata->columns[column_i].num_parts; part_i++) {
             auto path = btr_dir / ("column" + std::to_string(column_i) + "_part" + std::to_string(part_i));
             Utils::readFileToMemory(path.string(), compressed_data[column_i][part_i]);
             readers[column_i].emplace_back(compressed_data[column_i][part_i].data());
@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
     size_t total_size = 0;
     size_t total_compressed_size = 0;
     for (u32 column_i : columns) {
-        for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
+        for (u32 part_i = 0; part_i < file_metadata->columns[column_i].num_parts; part_i++) {
             BtrReader &reader = readers[column_i][part_i];
             compressed_sizes[column_i] += compressed_data[column_i][part_i].size();
             for (u32 chunk_i = 0; chunk_i < reader.getChunkCount(); chunk_i++) {

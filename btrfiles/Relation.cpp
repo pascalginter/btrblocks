@@ -5,8 +5,8 @@
 #include "compression/BtrReader.hpp"
 #include "compression/Datablock.hpp"
 // ------------------------------------------------------------------------------
-#include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
+#include <oneapi/tbb/parallel_for.h>
+#include <oneapi/tbb/global_control.h>
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <fstream>
@@ -70,8 +70,9 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
   // These counter are for statistics that match the harbook.
   std::vector<std::atomic_size_t> sizes_uncompressed(relation.columns.size());
   std::vector<std::atomic_size_t> sizes_compressed(relation.columns.size());
-  std::vector<u32> part_counters(relation.columns.size());
+  std::vector<std::vector<u32>> part_counters(relation.columns.size());
   std::vector<ColumnType> types(relation.columns.size());
+  std::vector<ColumnChunkInfo> chunk_infos;
 
   // TODO run in parallel over individual columns and handle chunks inside
   // TODO collect statistics for overall metadata like
@@ -80,7 +81,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
   //      - for every column: name, type
   // TODO chunk flag
   auto start_time = std::chrono::steady_clock::now();
-  //tbb::parallel_for(SIZE(0), relation.columns.size(), [&](SIZE column_i) {
+  //oneapi::tbb::parallel_for(SIZE(0), relation.columns.size(), [&](SIZE column_i) {
   for (SIZE column_i = 0; column_i != relation.columns.size(); column_i++){
     types[column_i] = relation.columns[column_i].type;
     if (typefilter != ColumnType::UNDEFINED && typefilter != types[column_i]) {
@@ -97,16 +98,25 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
         continue;
       }
 
+      // TODO pascalginter fix
       auto input_chunk = relation.getInputChunk(ranges[chunk_i], chunk_i, column_i);
+      ColumnChunkInfo info{
+        .max_value = std::numeric_limits<u32>::max(),
+        .min_value = std::numeric_limits<u32>::min(),
+        .uncompressedSize = input_chunk.size,
+      };
+      chunk_infos.push_back(info);
       std::vector<u8> data = Datablock::compress(input_chunk);
       sizes_uncompressed[column_i] += input_chunk.size;
 
       if (!part.canAdd(data.size())) {
-        std::string filename = path_prefix + std::to_string(part_counters[column_i]);
+        std::string filename = path_prefix + std::to_string(part_counters[column_i].size());
         sizes_compressed[column_i] += part.writeToDisk(filename);
-        part_counters[column_i]++;
+        part_counters[column_i].push_back(0);
         if (verify) verify_or_die(filename, input_chunks);
         input_chunks.clear();
+      }else {
+        part_counters[column_i].back()++;
       }
 
       input_chunks.push_back(std::move(input_chunk));
@@ -114,15 +124,15 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
     }
 
     if (!part.chunks.empty()) {
-      std::string filename = path_prefix + std::to_string(part_counters[column_i]);
+      std::string filename = path_prefix + std::to_string(part_counters[column_i].size());
       sizes_compressed[column_i] += part.writeToDisk(filename);
-      part_counters[column_i]++;
+      part_counters[column_i].push_back(0);
       if (verify) verify_or_die(filename, input_chunks);
       input_chunks.clear();
     }
   };
 
-  Datablock::writeMetadata(btr_dir + "/metadata", types, part_counters, ranges.size());
+  Datablock::writeMetadata(btr_dir + "/metadata", types, part_counters, chunk_infos, ranges.size());
   std::ofstream stats_stream(stats_dir);
   size_t total_uncompressed = 0;
   size_t total_compressed = 0;

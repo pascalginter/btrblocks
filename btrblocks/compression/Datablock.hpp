@@ -20,19 +20,43 @@ struct ColumnChunkMeta {
 };
 static_assert(sizeof(ColumnChunkMeta) == 12);
 
+struct ColumnChunkInfo {
+  u64 uncompressedSize;
+  u64 min_value;
+  u64 max_value;
+};
+
 struct ColumnPartInfo {
+  u32 chunk_offset;   // Offset into the flat chunk array
+  u32 num_chunks;
+};
+
+struct ColumnInfo {
   ColumnType type;
-  // There are 3 unused bytes here.
+  u32 part_offset;   // Offset into the flat parts array
   u32 num_parts;
 };
-static_assert(sizeof(ColumnPartInfo) == 8);
 
 struct FileMetadata {
   u32 num_columns;
   u32 num_chunks;
-  struct ColumnPartInfo parts[];
+  u32 total_parts;
+
+  // Flattened arrays
+  ColumnInfo* columns;           // num_columns elements
+  ColumnPartInfo* parts;         // num_parts elements
+  ColumnChunkInfo* chunks;       // num_chunks elements
+
+  static FileMetadata* fromMemory(u8* data) {
+    auto* metadata = reinterpret_cast<FileMetadata*>(data);
+    metadata->columns = reinterpret_cast<ColumnInfo*>(data + 3 * sizeof(u32));
+    metadata->parts = reinterpret_cast<ColumnPartInfo*>(metadata->columns + metadata->num_columns * sizeof(ColumnPartInfo));
+    metadata->chunks = reinterpret_cast<ColumnChunkInfo*>(metadata->parts + metadata->total_parts * sizeof(ColumnPartInfo));
+
+    return metadata;
+  }
 };
-static_assert(sizeof(FileMetadata) == 8);
+
 // End new chunking
 struct __attribute__((packed)) ColumnMeta {
   u8 compression_type;
@@ -65,7 +89,8 @@ class Datablock : public RelationCompressor {
   static vector<u8> compress(const InputChunk& input_chunk);
   static u32 writeMetadata(const std::string& path,
                            std::vector<ColumnType> types,
-                           vector<u32> part_counters,
+                           vector<vector<u32>> part_counters,
+                           vector<ColumnChunkInfo> chunk_infos,
                            u32 num_chunks);
 
   static SIZE compress(const InputChunk& input_chunk, u8* output_buffer);

@@ -125,8 +125,8 @@ int main(int argc, char **argv)
     std::vector<std::vector<BtrReader>> readers(file_metadata->num_columns);
     std::vector<std::vector<std::vector<char>>> compressed_data(file_metadata->num_columns);
     oneapi::tbb::parallel_for(u32(0), file_metadata->num_columns, [&](u32 column_i) {
-        compressed_data[column_i].resize(file_metadata->parts[column_i].num_parts);
-        for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
+        compressed_data[column_i].resize(file_metadata->columns[column_i].num_parts);
+        for (u32 part_i = 0; part_i < file_metadata->columns[column_i].num_parts; part_i++) {
             auto path = btr_dir / ("column" + std::to_string(column_i) + "_part" + std::to_string(part_i));
             Utils::readFileToMemory(path.string(), compressed_data[column_i][part_i]);
             readers[column_i].emplace_back(compressed_data[column_i][part_i].data());

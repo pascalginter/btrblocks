@@ -18,7 +18,7 @@ DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
   ::arrow::FieldVector fields;
   for (u32 i = 0; i != file_metadata->num_columns; i++){
     std::shared_ptr<::arrow::DataType> type;
-    switch (file_metadata->parts[i].type){
+    switch (file_metadata->columns[i].type){
       case ColumnType::INTEGER:
         type = ::arrow::int32();
         break;
@@ -52,9 +52,9 @@ std::vector<int> DirectoryReader::get_all_rowgroup_indices() {
 std::vector<int> DirectoryReader::get_all_column_indices() {
   std::vector<int> column_indices;
   for (u32 i=0; i!=file_metadata->num_columns; i++){
-    if (file_metadata->parts[i].type == ColumnType::INTEGER
-        || file_metadata->parts[i].type == ColumnType::DOUBLE
-        || file_metadata->parts[i].type == ColumnType::STRING){
+    if (file_metadata->columns[i].type == ColumnType::INTEGER
+        || file_metadata->columns[i].type == ColumnType::DOUBLE
+        || file_metadata->columns[i].type == ColumnType::STRING){
       column_indices.push_back(i);
     }
   }
@@ -68,7 +68,7 @@ template <typename T, typename U>
   ::arrow::NumericBuilder<T> builder;
   ::arrow::ArrayVector arrays;
 
-  for (u32 part_i = 0; part_i < file_metadata->parts[i].num_parts; part_i++) {
+  for (u32 part_i = 0; part_i < file_metadata->columns[i].num_parts; part_i++) {
     auto path = btr_dir / ("column" + std::to_string(i) + "_part" + std::to_string(part_i));
     Utils::readFileToMemory(path.string(), buffer);
     BtrReader reader(buffer.data());
@@ -94,7 +94,7 @@ template <typename T, typename U>
   std::vector<u8> output_buffer;
   ::arrow::ArrayVector arrays;
 
-  for (u32 part_i = 0; part_i < file_metadata->parts[i].num_parts; part_i++) {
+  for (u32 part_i = 0; part_i < file_metadata->columns[i].num_parts; part_i++) {
     auto path = btr_dir / ("column" + std::to_string(i) + "_part" + std::to_string(part_i));
     Utils::readFileToMemory(path.string(), buffer);
     BtrReader reader(buffer.data());
@@ -105,13 +105,13 @@ template <typename T, typename U>
       auto bitmap = reader.getBitmap(chunk_i);
       for (u32 j=0; j!=reader.getTupleCount(chunk_i); j++){
         if (!bitmap->test(j)){
-          builder.AppendNull().ok();
+          ARROW_RETURN_NOT_OK(builder.AppendNull());
         }else if (requiresCopy){
           auto string_pointer_array_viewer = StringPointerArrayViewer(reinterpret_cast<const u8*>(output_buffer.data()));
-          builder.Append(string_pointer_array_viewer(j)).ok();
+          ARROW_RETURN_NOT_OK(builder.Append(string_pointer_array_viewer(j)));
         }else{
           auto string_array_viewer = StringArrayViewer(reinterpret_cast<const u8*>(output_buffer.data()));
-          builder.Append(string_array_viewer(j)).ok();
+          ARROW_RETURN_NOT_OK(builder.Append(string_array_viewer(j)));
         }
       }
       arrays.push_back(builder.Finish().ValueOrDie());
@@ -158,7 +158,7 @@ template <typename T, typename U>
   std::vector<std::shared_ptr<::arrow::ChunkedArray>> columns(column_indices.size());
   int i = 0;
   for (int index : column_indices){
-    ReadColumn(index, &columns[i++]).ok();
+    ARROW_RETURN_NOT_OK(ReadColumn(index, &columns[i++]));
   }
   ::arrow::FieldVector relevantFields;
   for (auto index : column_indices) relevantFields.push_back(schema->field(index));

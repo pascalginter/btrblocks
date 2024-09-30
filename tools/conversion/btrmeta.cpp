@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     u32 total_tuples = 0;
     u32 chunk_i = 0;
     for (u32 column_i : columns) {
-        for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
+        for (u32 part_i = 0; part_i < file_metadata->columns[column_i].num_parts; part_i++) {
             thread_local std::vector<char> compressed_data;
             auto path = btr_dir / ("column" + std::to_string(column_i) + "_part" + std::to_string(part_i));
             Utils::readFileToMemory(path.string(), compressed_data);

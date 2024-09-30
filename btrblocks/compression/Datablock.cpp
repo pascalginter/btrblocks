@@ -26,26 +26,59 @@ namespace btrblocks {
 Datablock::Datablock(const Relation& relation) : RelationCompressor(relation) {}
 u32 Datablock::writeMetadata(const std::string& path,
                              std::vector<ColumnType> types,
-                             vector<u32> part_counters,
+                             vector<vector<u32>> part_counters,
+                             vector<ColumnChunkInfo> chunk_infos,
                              u32 num_chunks) {
   std::ofstream metadata_file(path, std::ios::out | std::ios::binary);
   if (!metadata_file.good()) {
     throw Generic_Exception("Opening metadata output file failed");
   }
 
+  u32 total_parts = 0;
+  for (u32 i = 0; i < num_chunks; i++) {
+    total_parts += part_counters[i].size();
+  }
+
   u32 bytes_written = 0;
-  FileMetadata metadata{.num_columns = static_cast<u32>(types.size()),
-                        .num_chunks = static_cast<u32>(num_chunks)};
+  FileMetadata metadata{
+    .num_columns = static_cast<u32>(types.size()),
+    .num_chunks = static_cast<u32>(num_chunks),
+    .total_parts = total_parts,
+  };
 
   metadata_file.write(reinterpret_cast<const char*>(&metadata), sizeof(metadata));
   bytes_written += sizeof(metadata);
 
+  // Write column info
+  u32 part_offset = 0;
   for (u32 column = 0; column < metadata.num_columns; column++) {
-    ColumnPartInfo info{.type = types[column],
-                        .num_parts = static_cast<u32>(part_counters[column])};
+    ColumnInfo info{
+      .type = types[column],
+      .num_parts = static_cast<u32>(part_counters[column].size()),
+      .part_offset = part_offset,
+    };
+    part_offset += info.num_parts;
     metadata_file.write(reinterpret_cast<const char*>(&info), sizeof(info));
     bytes_written += sizeof(info);
   }
+
+  // Write part info
+  u32 chunk_offset = 0;
+  for (u32 column = 0; column < metadata.num_columns; column++) {
+    for (u32 part = 0; part < part_counters[column].size(); part++) {
+      ColumnPartInfo info{
+        .num_chunks = 0,
+        .chunk_offset = chunk_offset,
+        };
+      chunk_offset += info.num_chunks;
+      metadata_file.write(reinterpret_cast<const char*>(&info), sizeof(info));
+      bytes_written += sizeof(info);
+    }
+  }
+
+  // Write chunk info
+  metadata_file.write(reinterpret_cast<const char*>(chunk_infos.data()), chunk_infos.size() * sizeof(ColumnChunkInfo));
+
 
   metadata_file.close();
   return bytes_written;
