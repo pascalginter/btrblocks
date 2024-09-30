@@ -2,11 +2,11 @@
 #include <filesystem>
 #include <fstream>
 #include <random>
-#include <tbb/parallel_for_each.h>
 // -------------------------------------------------------------------------------------
 #include "gflags/gflags.h"
-#include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
+#include "oneapi/tbb/global_control.h"
+#include "oneapi/tbb/parallel_for.h"
+#include <oneapi/tbb/parallel_for_each.h>
 // -------------------------------------------------------------------------------------
 #include "common/PerfEvent.hpp"
 #include "common/Utils.hpp"
@@ -108,7 +108,8 @@ int main(int argc, char **argv) {
     } else {
         threads = FLAGS_threads;
     }
-    tbb::task_scheduler_init init(threads);
+    oneapi::tbb::global_control global_limit(
+      oneapi::tbb::global_control::max_allowed_parallelism, FLAGS_threads);
 
     // Read the metadata
     std::vector<char> raw_file_metadata;
