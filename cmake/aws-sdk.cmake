@@ -10,7 +10,7 @@ ExternalProject_Add(
         libawscpp-download
         PREFIX "vendor/libawscpp-download"
         GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp.git"
-        GIT_TAG "1.9.370"
+        GIT_TAG "1.11.414"
         TIMEOUT 10
         LIST_SEPARATOR "|"
         CMAKE_ARGS

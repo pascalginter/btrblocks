@@ -5,8 +5,8 @@
 #include <sstream>
 #include <vector>
 // -------------------------------------------------------------------------------------
-#include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
+#include <oneapi/tbb/global_control.h>
+#include <oneapi/tbb/parallel_for.h>
 // -------------------------------------------------------------------------------------
 #include <aws/core/Aws.h>
 #include <aws/s3-crt/S3CrtClient.h>
@@ -101,7 +101,7 @@ static void generate_and_upload_multipart(const Aws::S3Crt::S3CrtClient& s3_clie
     /* Upload parts */
     size_t num_parts = (object_size + part_size - 1) / part_size;
     std::vector<Aws::S3Crt::Model::CompletedPart> completed_parts(num_parts);
-    tbb::parallel_for(size_t(1), num_parts + 1, [&](size_t part_number) {
+    oneapi::tbb::parallel_for(size_t(1), num_parts + 1, [&](size_t part_number) {
       auto sstream = std::make_shared<std::stringstream>();
       generate_data(sstream, std::min(part_size, static_cast<std::size_t>(object_size)));
       auto [success, etag] = upload_part(s3_client, bucket, key, upload_id, part_number, sstream);

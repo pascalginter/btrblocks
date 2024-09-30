@@ -14,8 +14,8 @@
 #include <gflags/gflags.h>
 #include <yaml-cpp/yaml.h>
 #include <spdlog/spdlog.h>
-#include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
+#include <oneapi/tbb/global_control.h>
+#include <oneapi/tbb/parallel_for.h>
 // ------------------------------------------------------------------------------
 // Btr internal includes
 #include "common/Utils.hpp"
@@ -72,8 +72,9 @@ int main(int argc, char **argv)
     // This seems necessary to be
     SchemePool::refresh();
 
-    // Init TBB TODO: is that actually still necessary ?
-    tbb::task_scheduler_init init(FLAGS_threads);
+    // Init TBB
+    oneapi::tbb::global_control global_limit(
+      oneapi::tbb::global_control::max_allowed_parallelism, FLAGS_threads);
 
     // Load schema
     const auto schema = YAML::LoadFile(FLAGS_yaml);

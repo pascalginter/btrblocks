@@ -12,8 +12,8 @@
 #include "gflags/gflags.h"
 #include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
-#include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
+#include "oneapi/tbb/global_control.h"
+#include "oneapi/tbb/parallel_for.h"
 // ------------------------------------------------------------------------------
 // Btrfiles library
 #include "btrfiles.hpp"
@@ -105,9 +105,9 @@ int main(int argc, char **argv)
     // This seems necessary to be
     SchemePool::refresh();
 
-    // Init TBB TODO: is that actually still necessary ?
-    tbb::task_scheduler_init init(FLAGS_threads); // NOLINT(cppcoreguidelines-narrowing-conversions)
-
+    // Init TBB
+    oneapi::tbb::global_control global_limit(
+      oneapi::tbb::global_control::max_allowed_parallelism, FLAGS_threads);
     // Open output file
     auto csvstream = std::ofstream(FLAGS_csv);
     csvstream << std::setprecision(32);
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     // Prepare the readers
     std::vector<std::vector<BtrReader>> readers(file_metadata->num_columns);
     std::vector<std::vector<std::vector<char>>> compressed_data(file_metadata->num_columns);
-    tbb::parallel_for(u32(0), file_metadata->num_columns, [&](u32 column_i) {
+    oneapi::tbb::parallel_for(u32(0), file_metadata->num_columns, [&](u32 column_i) {
         compressed_data[column_i].resize(file_metadata->parts[column_i].num_parts);
         for (u32 part_i = 0; part_i < file_metadata->parts[column_i].num_parts; part_i++) {
             auto path = btr_dir / ("column" + std::to_string(column_i) + "_part" + std::to_string(part_i));
