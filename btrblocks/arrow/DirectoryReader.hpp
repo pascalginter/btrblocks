@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <vector>
 #include "compression/Datablock.hpp"
+
+#include <compression/BtrReader.hpp>
 // -------------------------------------------------------------------------------------
 
 namespace btrblocks::arrow {
@@ -18,12 +20,9 @@ class DirectoryReader {
   std::vector<char> raw_file_metadata;
   const FileMetadata* file_metadata;
 
-  std::vector<int> get_all_rowgroup_indices();
-  std::vector<int> get_all_column_indices();
+  [[nodiscard]] std::vector<int> get_all_row_group_indices() const;
+  [[nodiscard]] std::vector<int> get_all_column_indices() const;
 
- template <typename T, typename U>
- ::arrow::Status readNumericColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out);
- ::arrow::Status readStringColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out);
 public:
   DirectoryReader(std::string dir);
 
