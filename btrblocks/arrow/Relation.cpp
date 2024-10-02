@@ -58,7 +58,7 @@ Column parseStringArrowColumn(const std::string& name,
 }
 
 
-Column parseArrowColumn(const std::string& name,
+std::optional<Column> parseArrowColumn(const std::string& name,
                         const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
     if (chunkedArr->type() == ::arrow::int32()) {
       return parseFixedSizeArrowColumn<INTEGER>(name, chunkedArr);
@@ -67,7 +67,7 @@ Column parseArrowColumn(const std::string& name,
     }else if (chunkedArr->type() == ::arrow::utf8()){
       return parseStringArrowColumn(name, chunkedArr);
     }else{
-      exit(1);
+      return std::nullopt;
     }
 }
 // ------------------------------------------------------------------------------
@@ -75,7 +75,9 @@ Relation parseArrowTable(const std::shared_ptr<::arrow::Table>& table){
   Relation result;
   for (int column_i=0; column_i!=table->num_columns(); column_i++){
     std::string column_name = table->schema()->field(column_i)->name();
-    result.columns.push_back(parseArrowColumn(column_name, table->column(column_i)));
+    if (auto potentiallyParsedColumn = parseArrowColumn(column_name, table->column(column_i))) {
+      result.columns.push_back(std::move(potentiallyParsedColumn.value()));
+    }
   }
   result.fixTupleCount();
   return result;

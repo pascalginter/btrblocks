@@ -57,6 +57,7 @@ u32 Datablock::writeMetadata(const std::string& path,
       .num_parts = static_cast<u32>(part_counters[column].size()),
       .part_offset = part_offset,
     };
+    std::cout << static_cast<int>(info.type) << std::endl;
     part_offset += info.num_parts;
     metadata_file.write(reinterpret_cast<const char*>(&info), sizeof(info));
     bytes_written += sizeof(info);

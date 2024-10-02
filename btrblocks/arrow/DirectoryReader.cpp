@@ -13,7 +13,7 @@ DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
   {
     auto metadata_path = btr_dir / "metadata";
     Utils::readFileToMemory(metadata_path.string(), raw_file_metadata);
-    file_metadata = reinterpret_cast<const FileMetadata*>(raw_file_metadata.data());
+    file_metadata = FileMetadata::fromMemory(raw_file_metadata.data());
   }
 
   ::arrow::FieldVector fields;
@@ -29,9 +29,8 @@ DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
       case ColumnType::STRING:
         type = ::arrow::utf8();
         break;
-      case ColumnType::SKIP:
-        continue;
       default:
+        std::cout << i << " " << static_cast<int>(file_metadata->columns[i].type) << std::endl;
         exit(1);
     }
     fields.push_back(::arrow::field("c_" + std::to_string(i), type));

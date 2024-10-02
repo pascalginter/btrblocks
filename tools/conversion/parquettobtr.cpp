@@ -12,14 +12,20 @@
 
 int main(){
   std::shared_ptr<arrow::io::RandomAccessFile> input =
-      arrow::io::ReadableFile::Open("btr.parquet").ValueOrDie();
+      arrow::io::ReadableFile::Open("lineitem.parquet").ValueOrDie();
 
   // Open Parquet file reader
   std::unique_ptr<parquet::arrow::FileReader> arrow_reader;
-  parquet::arrow::OpenFile(input, arrow::default_memory_pool(), &arrow_reader).ok();
+  auto status = parquet::arrow::OpenFile(input, arrow::default_memory_pool(), &arrow_reader);
+   if (!status.ok()) {
+     std::cout << status << std::endl;
+   }
 
   std::shared_ptr<arrow::Table> table;
-  arrow_reader->ReadTable(&table).ok();
+  status = arrow_reader->ReadTable(&table);
+  if (!status.ok()) {
+    std::cout << status << std::endl;
+  }
   std::cout << table->ToString() << "\n";
 
   btrblocks::SchemePool::refresh();

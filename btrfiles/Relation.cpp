@@ -70,7 +70,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
   // These counter are for statistics that match the harbook.
   std::vector<std::atomic_size_t> sizes_uncompressed(relation.columns.size());
   std::vector<std::atomic_size_t> sizes_compressed(relation.columns.size());
-  std::vector<std::vector<u32>> part_counters(relation.columns.size());
+  std::vector<std::vector<u32>> part_counters(relation.columns.size(), std::vector<u32>(1, 0));
   std::vector<ColumnType> types(relation.columns.size());
   std::vector<ColumnChunkInfo> chunk_infos;
 
@@ -110,7 +110,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
       sizes_uncompressed[column_i] += input_chunk.size;
 
       if (!part.canAdd(data.size())) {
-        std::string filename = path_prefix + std::to_string(part_counters[column_i].size());
+        std::string filename = path_prefix + std::to_string(part_counters[column_i].size() - 1);
         sizes_compressed[column_i] += part.writeToDisk(filename);
         part_counters[column_i].push_back(0);
         if (verify) verify_or_die(filename, input_chunks);
@@ -124,7 +124,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
     }
 
     if (!part.chunks.empty()) {
-      std::string filename = path_prefix + std::to_string(part_counters[column_i].size());
+      std::string filename = path_prefix + std::to_string(part_counters[column_i].size() - 1);
       sizes_compressed[column_i] += part.writeToDisk(filename);
       part_counters[column_i].push_back(0);
       if (verify) verify_or_die(filename, input_chunks);

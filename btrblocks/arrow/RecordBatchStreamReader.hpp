@@ -22,10 +22,14 @@ class RecordBatchStreamReader final : public ::arrow::RecordBatchReader {
     const FileMetadata* metadata;
 
     std::string path_prefix;
+
+    template <typename T, typename U>
+    ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressNumericChunk();
+    ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressStringChunk();
   public:
     ColumnReadState(const FileMetadata* file_metadata, int column_i, int chunk_i, const std::string& dir);
 
-    BtrReader getReader(){ return BtrReader(buffer.data()); };
+    ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressCurrentChunk();
     void advance(int chunk_i);
   };
   //--------------------------------------------------------------------------------------------------
@@ -36,9 +40,6 @@ class RecordBatchStreamReader final : public ::arrow::RecordBatchReader {
   int current_chunk = 0;
   int chunk_index = 0;
 
-  template <typename T, typename U>
-  ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressNumericChunk(BtrReader& reader, int chunk_i);
-  static ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressStringChunk(BtrReader& reader, int chunk_i);
 public:
   RecordBatchStreamReader(std::string directory, const FileMetadata* file_metadata,
     const std::vector<int>& row_group_indices, const std::vector<int>& column_indices);
