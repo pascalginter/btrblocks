@@ -50,7 +50,6 @@ endif ()
 #Arrow
 include("${CMAKE_VENDOR_DIR}/arrow.cmake")
 
-
 # Compression library dependencies
 include("${CMAKE_VENDOR_DIR}/fastpfor.cmake")
 include("${CMAKE_VENDOR_DIR}/fsst.cmake")
