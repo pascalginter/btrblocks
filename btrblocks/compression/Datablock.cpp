@@ -54,8 +54,8 @@ u32 Datablock::writeMetadata(const std::string& path,
   for (u32 column = 0; column < metadata.num_columns; column++) {
     ColumnInfo info{
       .type = types[column],
-      .num_parts = static_cast<u32>(part_counters[column].size()),
       .part_offset = part_offset,
+      .num_parts = static_cast<u32>(part_counters[column].size()),
     };
     std::cout << static_cast<int>(info.type) << std::endl;
     part_offset += info.num_parts;
@@ -68,8 +68,8 @@ u32 Datablock::writeMetadata(const std::string& path,
   for (u32 column = 0; column < metadata.num_columns; column++) {
     for (u32 part = 0; part < part_counters[column].size(); part++) {
       ColumnPartInfo info{
-        .num_chunks = 0,
         .chunk_offset = chunk_offset,
+        .num_chunks = 0,
         };
       chunk_offset += info.num_chunks;
       metadata_file.write(reinterpret_cast<const char*>(&info), sizeof(info));

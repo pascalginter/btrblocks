@@ -101,9 +101,9 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
       // TODO pascalginter fix
       auto input_chunk = relation.getInputChunk(ranges[chunk_i], chunk_i, column_i);
       ColumnChunkInfo info{
-        .max_value = std::numeric_limits<u32>::max(),
-        .min_value = std::numeric_limits<u32>::min(),
         .uncompressedSize = input_chunk.size,
+        .min_value = std::numeric_limits<u32>::min(),
+        .max_value = std::numeric_limits<u32>::max(),
       };
       chunk_infos.push_back(info);
       std::vector<u8> data = Datablock::compress(input_chunk);
