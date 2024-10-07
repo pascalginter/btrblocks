@@ -1,5 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 #include "arrow/RecordBatchStreamReader.hpp"
+#include "arrow/ChunkToArrowArrayConverter.hpp"
 #include "arrow/Util.hpp"
 
 #include <common/Utils.hpp>
@@ -18,18 +19,13 @@ RecordBatchStreamReader::ColumnReadState::ColumnReadState(
 template <typename T, typename U>
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
     RecordBatchStreamReader::ColumnReadState::decompressNumericChunk(){
-  std::vector<u8> output_buffer;
-  ::arrow::NumericBuilder<T> builder;
-
   BtrReader reader(buffer.data());
   const u32 tupleCount = reader.getTupleCount(chunk_i);
-  reader.readColumn(output_buffer, chunk_i);
   auto* bitmap = reader.getBitmap(chunk_i);
   std::vector<u8> validityBytes(tupleCount);
   bitmap->writeValidityBytes(validityBytes.data());
-  builder.AppendValues(reinterpret_cast<U*>(output_buffer.data()),
-                       static_cast<int64_t>(tupleCount), validityBytes.data()).ok();
-  return builder.Finish();
+  return ChunkToArrowArrayConverter::convertNumericChunk<T, U>(
+    reinterpret_cast<U*>(buffer.data()), tupleCount, validityBytes.data());
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
@@ -39,21 +35,15 @@ template <typename T, typename U>
 
   BtrReader reader(buffer.data());
   const bool requiresCopy = reader.readColumn(output_buffer, chunk_i);
+  u32 tupleCount = reader.getTupleCount(chunk_i);
   const auto bitmap = reader.getBitmap(chunk_i);
-  for (u32 j=0; j!=reader.getTupleCount(chunk_i); j++){
-    if (!bitmap->test(j)){
-      ARROW_RETURN_NOT_OK(builder.AppendNull());
-    }else if (requiresCopy){
-      auto string_pointer_array_viewer = StringPointerArrayViewer(reinterpret_cast<const u8*>(
-        output_buffer.data()));
-      ARROW_RETURN_NOT_OK(builder.Append(string_pointer_array_viewer(j)));
-    }else{
-      auto string_array_viewer = StringArrayViewer(reinterpret_cast<const u8*>(
-        output_buffer.data()));
-      ARROW_RETURN_NOT_OK(builder.Append(string_array_viewer(j)));
-    }
+  if (requiresCopy) {
+    StringPointerArrayViewer viewer(reinterpret_cast<const u8*>(output_buffer.data()));
+    return ChunkToArrowArrayConverter::convertStringChunk(viewer, tupleCount, bitmap);
+  } else {
+    StringArrayViewer viewer(reinterpret_cast<const u8*>(output_buffer.data()));
+    return ChunkToArrowArrayConverter::convertStringChunk(viewer, tupleCount, bitmap);
   }
-  return builder.Finish();
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>>

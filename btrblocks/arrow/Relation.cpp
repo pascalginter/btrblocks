@@ -1,8 +1,11 @@
 // ------------------------------------------------------------------------------
 #include "storage/Relation.hpp"
-#include "common/Units.hpp"
+
+#include "ChunkToArrowArrayConverter.hpp"
+#include "Util.hpp"
 #include "arrow.hpp"
 #include "btrblocks.hpp"
+#include "common/Units.hpp"
 // ------------------------------------------------------------------------------
 namespace btrblocks::arrow {
 // ------------------------------------------------------------------------------
@@ -57,7 +60,6 @@ Column parseStringArrowColumn(const std::string& name,
   return {name, std::move(column_data), std::move(bitmap)};
 }
 
-
 std::optional<Column> parseArrowColumn(const std::string& name,
                         const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
     if (chunkedArr->type() == ::arrow::int32()) {
@@ -82,8 +84,31 @@ Relation parseArrowTable(const std::shared_ptr<::arrow::Table>& table){
   result.fixTupleCount();
   return result;
 }
-
-
+// ------------------------------------------------------------------------------
+::arrow::Result<std::shared_ptr<::arrow::Table>> parseRelationToArrowTable(const Relation& relation) {
+  ::arrow::FieldVector fields;
+  ::arrow::ArrayVector columns;
+  for (const auto& column : relation.columns) {
+    fields.push_back(::arrow::field(column.name, util::ConvertTypeToArrowType(column.type)));
+    ::arrow::Result<std::shared_ptr<::arrow::Array>> array;
+    switch (column.type) {
+      case ColumnType::INTEGER:
+        array = ChunkToArrowArrayConverter::convertNumericChunk<::arrow::Int32Type, int32_t>(
+          column.integers().data, column.size(), column.bitmaps().data);
+        break;
+      case ColumnType::DOUBLE:
+        array = ChunkToArrowArrayConverter::convertNumericChunk<::arrow::DoubleType, double>(
+          column.doubles().data, column.size(), column.bitmaps().data);
+        break;
+      case ColumnType::STRING:
+        array = ChunkToArrowArrayConverter::convertStringChunk(column.strings(), column.bitmap);
+      default:
+        return ::arrow::Status::NotImplemented("Encountered unknown type");
+    }
+    ARROW_RETURN_NOT_OK(array);
+  }
+  return ::arrow::Table::Make(::arrow::schema(fields), columns);
+}
 // ------------------------------------------------------------------------------
 } // namespace btrblocks::arrow
 // ------------------------------------------------------------------------------

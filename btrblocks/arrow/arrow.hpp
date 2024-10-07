@@ -8,6 +8,8 @@
 namespace btrblocks::arrow {
 // ------------------------------------------------------------------------------
 Relation parseArrowTable(const std::shared_ptr<::arrow::Table>& table);
+
+::arrow::Result<std::shared_ptr<::arrow::Table>> parseRelationToArrowTable(const Relation& relation);
 // ------------------------------------------------------------------------------
 } // namespace btrblocks::arrow
 // ------------------------------------------------------------------------------
