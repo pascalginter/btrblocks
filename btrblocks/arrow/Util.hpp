@@ -1,3 +1,4 @@
+#pragma once
 #include <arrow/api.h>
 
 #include "common/Units.hpp"
