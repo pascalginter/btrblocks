@@ -24,7 +24,9 @@ class DirectoryReader {
   [[nodiscard]] std::vector<int> get_all_column_indices() const;
 
 public:
-  DirectoryReader(std::string dir);
+  explicit DirectoryReader(std::string dir);
+
+  [[nodiscard]] const FileMetadata* metadata() const { return file_metadata; }
 
   ::arrow::Status GetSchema(std::shared_ptr<::arrow::Schema>* out);
   ::arrow::Status ReadColumn(int i, std::shared_ptr<::arrow::ChunkedArray>* out);
