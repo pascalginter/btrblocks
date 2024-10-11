@@ -49,7 +49,7 @@ struct FileMetadata {
 
   static FileMetadata* fromMemory(char* data) {
     auto* metadata = reinterpret_cast<FileMetadata*>(data);
-    metadata->columns = reinterpret_cast<ColumnInfo*>(data + sizeof(FileMetadata));
+    metadata->columns = reinterpret_cast<ColumnInfo*>(data + 1);
     metadata->parts = reinterpret_cast<ColumnPartInfo*>(reinterpret_cast<u8*>(metadata->columns)
       + metadata->num_columns * sizeof(ColumnInfo));
     metadata->chunks = reinterpret_cast<ColumnChunkInfo*>(reinterpret_cast<u8*>(metadata->parts)
