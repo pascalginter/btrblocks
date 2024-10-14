@@ -80,10 +80,14 @@ RecordBatchStreamReader::RecordBatchStreamReader(
   const std::vector<int>& row_group_indices,
   const std::vector<int>& column_indices) :
       dir(std::move(directory)), chunks(row_group_indices) {
-  schema_ = util::CreateSchemaFromFileMetadata(file_metadata);
+  auto tempSchema = util::CreateSchemaFromFileMetadata(file_metadata);
+
+  std::vector<std::shared_ptr<::arrow::Field>> fields;
   for (int column_index : column_indices) {
     read_states.emplace_back(file_metadata, column_index, row_group_indices[0], dir);
+    fields.push_back(tempSchema->field(column_index));
   }
+  schema_ = ::arrow::schema(fields);
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Status RecordBatchStreamReader::ReadNext(

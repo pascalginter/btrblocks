@@ -37,8 +37,8 @@ class RecordBatchStreamReader final : public ::arrow::RecordBatchReader {
   std::vector<int> chunks;
   std::shared_ptr<::arrow::Schema> schema_;
   std::vector<ColumnReadState> read_states;
-  int current_chunk = 0;
-  int chunk_index = 0;
+  int current_chunk = -1;
+  int chunk_index = -1;
 
 public:
   RecordBatchStreamReader(std::string directory, const FileMetadata* file_metadata,
