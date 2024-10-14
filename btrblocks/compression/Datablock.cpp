@@ -35,7 +35,7 @@ u32 Datablock::writeMetadata(const std::string& path,
   }
 
   u32 total_parts = 0;
-  for (u32 i = 0; i < num_chunks; i++) {
+  for (u32 i = 0; i < part_counters.size(); i++) {
     total_parts += part_counters[i].size();
   }
 

@@ -31,7 +31,7 @@ Column parseFixedSizeArrowColumn(const std::string& name,
 
   return {name, std::move(column_data), std::move(bitmap)};
 }
-
+// ------------------------------------------------------------------------------
 // TODO writing and reading should be completely unecessary but for prototyping ok
 Column parseStringArrowColumn(const std::string& name,
                               const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
@@ -59,7 +59,7 @@ Column parseStringArrowColumn(const std::string& name,
   }
   return {name, std::move(column_data), std::move(bitmap)};
 }
-
+// ------------------------------------------------------------------------------
 std::optional<Column> parseArrowColumn(const std::string& name,
                         const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
     if (chunkedArr->type() == ::arrow::int32()) {
