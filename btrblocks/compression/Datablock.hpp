@@ -24,6 +24,7 @@ struct ColumnChunkInfo {
   u64 uncompressedSize;
   u64 min_value;
   u64 max_value;
+  u64 tuple_count;
 };
 
 struct ColumnPartInfo {

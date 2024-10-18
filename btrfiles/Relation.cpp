@@ -104,6 +104,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
         .uncompressedSize = input_chunk.size,
         .min_value = std::numeric_limits<u32>::min(),
         .max_value = std::numeric_limits<u32>::max(),
+        .tuple_count = input_chunk.tuple_count,
       };
       chunk_infos.push_back(info);
       std::vector<u8> data = Datablock::compress(input_chunk);
