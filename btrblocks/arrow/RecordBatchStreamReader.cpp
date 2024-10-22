@@ -66,6 +66,7 @@ void RecordBatchStreamReader::ColumnReadState::advance(int next_chunk_i) {
     assert(global_chunk_i < next_chunk_i);
     if (part_i == -1 || part_info.num_chunks == ++chunk_i) {
       part_info = metadata->parts[column_info.part_offset + ++part_i];
+      assert(part_i < column_info.num_parts);
       chunk_i = 0;
     }
     global_chunk_i++;

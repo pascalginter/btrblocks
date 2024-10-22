@@ -113,7 +113,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
       if (!part.canAdd(data.size())) {
         std::string filename = path_prefix + std::to_string(part_counters[column_i].size() - 1);
         sizes_compressed[column_i] += part.writeToDisk(filename);
-        part_counters[column_i].push_back(0);
+        part_counters[column_i].push_back(1);
         if (verify) verify_or_die(filename, input_chunks);
         input_chunks.clear();
       }else {
@@ -127,7 +127,6 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
     if (!part.chunks.empty()) {
       std::string filename = path_prefix + std::to_string(part_counters[column_i].size() - 1);
       sizes_compressed[column_i] += part.writeToDisk(filename);
-      part_counters[column_i].push_back(0);
       if (verify) verify_or_die(filename, input_chunks);
       input_chunks.clear();
     }

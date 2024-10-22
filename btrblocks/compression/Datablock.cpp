@@ -36,8 +36,7 @@ u32 Datablock::writeMetadata(const std::string& path,
 
   u32 total_parts = 0;
   for (const auto& part_counter : part_counters) {
-    total_parts += part_counter.size() - 1;
-    assert(part_counter.back() == 0);
+    total_parts += part_counter.size();
   }
 
   u32 bytes_written = 0;
@@ -56,9 +55,8 @@ u32 Datablock::writeMetadata(const std::string& path,
     ColumnInfo info{
       .type = types[column],
       .part_offset = part_offset,
-      .num_parts = static_cast<u32>(part_counters[column].size()) - 1,
+      .num_parts = static_cast<u32>(part_counters[column].size()),
     };
-    std::cout << static_cast<int>(info.type) << std::endl;
     part_offset += info.num_parts;
     metadata_file.write(reinterpret_cast<const char*>(&info), sizeof(info));
     bytes_written += sizeof(info);
@@ -67,11 +65,12 @@ u32 Datablock::writeMetadata(const std::string& path,
   // Write part info
   u32 chunk_offset = 0;
   for (u32 column = 0; column < metadata.num_columns; column++) {
-    for (u32 part = 0; part < part_counters[column].size() - 1; part++) {
+    for (u32 part = 0; part < part_counters[column].size(); part++) {
       ColumnPartInfo info{
         .chunk_offset = chunk_offset,
         .num_chunks = part_counters[column][part],
         };
+      assert(info.num_chunks != 0);
       chunk_offset += info.num_chunks;
       metadata_file.write(reinterpret_cast<const char*>(&info), sizeof(info));
       bytes_written += sizeof(info);
