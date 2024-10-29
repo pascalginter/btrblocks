@@ -20,8 +20,26 @@ struct StringArrayViewer {
   }
 
   [[nodiscard]] inline u32 size(u32 i) const {
-    auto slots = reinterpret_cast<const Slot*>(slots_ptr);
+    const auto slots = reinterpret_cast<const Slot*>(slots_ptr);
     return slots[i + 1].offset - slots[i].offset;
+  }
+
+  [[nodiscard]] inline u32 data_offset() const {
+    const auto slots = reinterpret_cast<const Slot*>(slots_ptr);
+    return slots[0].offset;
+  }
+
+  [[nodiscard]] inline u32 tuple_count() const {
+    return data_offset() / sizeof(Slot) - 1;
+  }
+
+  [[nodiscard]] inline u32 data_size() const {
+    const auto slots = reinterpret_cast<const Slot*>(slots_ptr);
+    return slots[tuple_count()].offset - data_offset();
+  }
+
+  [[nodiscard]] inline const uint8_t* data_ptr() const {
+    return slots_ptr + data_offset();
   }
 
   inline const str operator()(u32 i) const {

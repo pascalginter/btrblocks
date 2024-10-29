@@ -18,7 +18,7 @@ class RecordBatchStreamReader final : public ::arrow::RecordBatchReader {
     int part_i = -1;
 
     const ColumnInfo& column_info;
-    ColumnPartInfo& part_info;
+    ColumnPartInfo part_info;
     const FileMetadata* metadata;
 
     std::string path_prefix;

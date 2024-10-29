@@ -7,15 +7,22 @@ namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunk(
     StringArrayViewer viewer, u32 tupleCount, BitmapWrapper* bitmap){
-  ::arrow::StringBuilder builder;
-  for (u32 i=0; i !=tupleCount; i++) {
-    if (!bitmap->test(i)) {
-      ARROW_RETURN_NOT_OK(builder.AppendNull());
-    } else {
-      ARROW_RETURN_NOT_OK(builder.Append(viewer(i)));
-    }
+  auto null_bitmap = ::arrow::AllocateBitmap(tupleCount, ::arrow::default_memory_pool()).ValueOrDie();
+  bitmap->writeArrowBitmap(null_bitmap->mutable_data());
+  auto data_buffer = ::arrow::AllocateBuffer(viewer.data_size(), ::arrow::default_memory_pool()).ValueOrDie();
+  memcpy(data_buffer->mutable_data(), viewer.data_ptr(), viewer.data_size());
+  auto offset_buffer = ::arrow::AllocateBuffer(viewer.data_offset()).ValueOrDie();
+  const auto offsets = reinterpret_cast<u32*>(offset_buffer->mutable_data());
+  const auto* slots = reinterpret_cast<const u32*>(viewer.slots_ptr);
+  for (u32 i=0; i<=tupleCount; i++) {
+    offsets[i] = slots[i] - viewer.data_offset();
   }
-  return builder.Finish();
+  auto array_data = ::arrow::ArrayData::Make(
+    ::arrow::utf8(), tupleCount,
+    {null_bitmap, std::move(offset_buffer), std::move(data_buffer)},
+    bitmap->cardinality()
+  );
+  return ::arrow::MakeArray(array_data);
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunk(
