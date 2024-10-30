@@ -15,9 +15,18 @@ struct StringPointerArrayViewer {
   };
   static_assert(sizeof(View) == 8);
   const View* views;
+  const u8* data;
 
-  explicit StringPointerArrayViewer(const u8* data) {
-    this->views = reinterpret_cast<const View*>(data);
+  explicit StringPointerArrayViewer(const u8* data_) : data(data_) {
+    this->views = reinterpret_cast<const View*>(data_);
+  }
+
+  [[nodiscard]] inline u32 copied_data_size(u32 tuple_count) {
+    u32 data_size = 0;
+    for (u32 i=0; i!=tuple_count; i++) {
+      data_size += views[i].length;
+    }
+    return data_size;
   }
 
   inline str operator()(u32 i) const {
