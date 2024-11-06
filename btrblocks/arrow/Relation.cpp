@@ -32,22 +32,24 @@ Column parseFixedSizeArrowColumn(const std::string& name,
   return {name, std::move(column_data), std::move(bitmap)};
 }
 // ------------------------------------------------------------------------------
-// TODO writing and reading should be completely unecessary but for prototyping ok
 Column parseStringArrowColumn(const std::string& name,
                               const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
+  int64_t headerSize = (2ll * chunkedArr->length() + 1ll) * sizeof(uint64_t);
   int64_t totalLength = 0;
   for (const auto& arr : chunkedArr->chunks()) {
     totalLength += arr->data()->buffers[2]->size();
   }
   Vector<str> column_data(chunkedArr->length(), totalLength);
+  totalLength += headerSize;
   Vector<u8> bitmap(chunkedArr->length());
-  int global_i = 0, offset = (2 * chunkedArr->length() + 1ull) * sizeof(uint64_t);
+  int64_t global_i = 0, offset = headerSize;
   for (const auto& arr : chunkedArr->chunks()){
     const auto* stringOffsets = reinterpret_cast<const int32_t*>(arr->data()->buffers[1]->data());
     for (int i=0; i!=arr->length(); i++, global_i++){
       int32_t stringBegin = stringOffsets[i];
       int32_t stringEnd = stringOffsets[i+1];
       int32_t stringLength = stringEnd - stringBegin;
+      assert(offset + stringLength <= totalLength);
       column_data.data->slot[global_i].offset = offset;
       column_data.data->slot[global_i].size = stringLength;
       memcpy(reinterpret_cast<u8*>(column_data.data) + offset, arr->data()->buffers[2]->data() + stringBegin, stringLength);
@@ -102,6 +104,7 @@ Relation parseArrowTable(const std::shared_ptr<::arrow::Table>& table){
         break;
       case ColumnType::STRING:
         array = ChunkToArrowArrayConverter::convertStringChunk(column.strings(), column.bitmap);
+        break;
       default:
         return ::arrow::Status::NotImplemented("Encountered unknown type");
     }
