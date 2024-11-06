@@ -20,7 +20,7 @@ namespace btrblocks::arrow {
   auto array_data = ::arrow::ArrayData::Make(
     ::arrow::utf8(), tupleCount,
     {null_bitmap, std::move(offset_buffer), std::move(data_buffer)},
-    bitmap->cardinality()
+    bitmap->get_bitset()->count()
   );
   return ::arrow::MakeArray(array_data);
 }
@@ -45,7 +45,7 @@ namespace btrblocks::arrow {
   auto array_data = ::arrow::ArrayData::Make(
     ::arrow::utf8(), tupleCount,
     {null_bitmap, std::move(offset_buffer), std::move(data_buffer)},
-    bitmap->cardinality()
+    bitmap->get_bitset()->count()
   );
   return ::arrow::MakeArray(array_data);
 }
