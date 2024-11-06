@@ -103,7 +103,7 @@ RecordBatchStreamReader::RecordBatchStreamReader(
   for (u32 i = 0; i != schema_->num_fields(); i++) {
     arrays[i] = read_states[i].decompressCurrentChunk().ValueOrDie();
   }
-  *record_batch = ::arrow::RecordBatch::Make(schema_, -1, arrays);
+  *record_batch = ::arrow::RecordBatch::Make(schema_, arrays[0]->length(), arrays);
   return ::arrow::Status::OK();
 }
 //--------------------------------------------------------------------------------------------------
