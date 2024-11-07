@@ -10,15 +10,31 @@
 // ------------------------------------------------------------------------------
 DEFINE_string(btr, "btr", "Directory for btr input");
 DEFINE_string(parquet, "parquet", "Parquet output file");
-DEFINE_string(writer_properties, "writer_properties", "Parquet writer properties");
+DEFINE_string(writer_properties, "default", "Parquet writer properties");
 // ------------------------------------------------------------------------------
 std::shared_ptr<parquet::WriterProperties> getWriterProperties() {
-  std::shared_ptr<parquet::WriterProperties> props =
-   parquet::WriterProperties::Builder()
-     .compression(parquet::Compression::SNAPPY)
-     //->disable_dictionary()->encoding(parquet::Encoding::PLAIN)
-     ->build();
-  return props;
+  parquet::WriterProperties::Builder props;
+  if (FLAGS_writer_properties == "default") {
+    return props.build();
+  }
+  props.compression(arrow::Compression::SNAPPY);
+  if (FLAGS_writer_properties == "snappy") {
+    return props.build();
+  }
+  props.compression(arrow::Compression::UNCOMPRESSED);
+  if (FLAGS_writer_properties == "uncompressed") {
+    return props.build();
+  }
+  props.disable_dictionary();
+  props.encoding(parquet::Encoding::PLAIN);
+  if (FLAGS_writer_properties == "btr") {
+    return props.build();
+  }
+  props.max_row_group_length(65536);
+  if (FLAGS_writer_properties == "btr_original_rowgroups") {
+    return props.build();
+  }
+  assert(false && "unsupported writer properties");
 }
 // ------------------------------------------------------------------------------
 int main(int argc, char** argv){
@@ -35,7 +51,9 @@ int main(int argc, char** argv){
 
   std::shared_ptr<arrow::io::FileOutputStream> outfile =
     arrow::io::FileOutputStream::Open(FLAGS_parquet).ValueOrDie();
-  status = parquet::arrow::WriteTable(*table, arrow::default_memory_pool(), outfile, 65536, getWriterProperties());
+  auto writeProps = getWriterProperties();
+  status = parquet::arrow::WriteTable(*table, arrow::default_memory_pool(), outfile,
+    writeProps->max_row_group_length(), writeProps);
   if (!status.ok()) {
     std::cout << status << "\n";
     exit(1);
