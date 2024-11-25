@@ -30,6 +30,7 @@ namespace btrblocks::arrow {
   auto null_bitmap = ::arrow::AllocateBitmap(tupleCount, ::arrow::default_memory_pool()).ValueOrDie();
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
   auto data_buffer = ::arrow::AllocateBuffer(viewer.copied_data_size(tupleCount), ::arrow::default_memory_pool()).ValueOrDie();
+  auto* data = data_buffer->mutable_data();
   auto offset_buffer = ::arrow::AllocateBuffer(sizeof(u32) * (tupleCount+1), ::arrow::default_memory_pool()).ValueOrDie();
   const auto offsets = reinterpret_cast<u32*>(offset_buffer->mutable_data());
 
@@ -37,7 +38,7 @@ namespace btrblocks::arrow {
   for (u32 i=0; i!=tupleCount; i++) {
     const auto& view = viewer.views[i];
     offsets[i] = copied_data_offset;
-    memcpy(data_buffer->mutable_data() + copied_data_offset, viewer.data + view.offset, view.length);
+    memcpy(data + copied_data_offset, viewer.data + view.offset, view.length);
     copied_data_offset += viewer.views[i].length;
   }
   offsets[tupleCount] = copied_data_offset;

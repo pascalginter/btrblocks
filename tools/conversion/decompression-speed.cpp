@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
     std::vector<u64> runtimes(file_metadata->num_columns);
 
     // Measure once to make sure all buffers are allocated properly
-    measure(file_metadata, readers, runtimes, columns);
+    //measure_single_thread(file_metadata, readers, runtimes, columns);
     std::fill(runtimes.begin(), runtimes.end(), 0);
 
     u64 total_runtime = 0;

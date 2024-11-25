@@ -19,9 +19,10 @@ RecordBatchStreamReader::ColumnReadState::ColumnReadState(
 template <typename T, typename U>
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
     RecordBatchStreamReader::ColumnReadState::decompressNumericChunk(){
-  BtrReader reader(buffer.data());
-  const u32 tupleCount = reader.getTupleCount(chunk_i);
-  auto* bitmap = reader.getBitmap(chunk_i);
+  const bool requiresCopy = reader->readColumn(output_buffer, chunk_i);
+  assert(!requiresCopy);
+  const u32 tupleCount = reader->getTupleCount(chunk_i);
+  auto* bitmap = reader->getBitmap(chunk_i);
   std::vector<u8> validityBytes(tupleCount);
   bitmap->writeValidityBytes(validityBytes.data());
   return ChunkToArrowArrayConverter::convertNumericChunk<T, U>(
@@ -31,12 +32,10 @@ template <typename T, typename U>
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
     RecordBatchStreamReader::ColumnReadState::decompressStringChunk(){
   ::arrow::StringBuilder builder;
-  std::vector<u8> output_buffer;
 
-  BtrReader reader(buffer.data());
-  const bool requiresCopy = reader.readColumn(output_buffer, chunk_i);
-  u32 tupleCount = reader.getTupleCount(chunk_i);
-  const auto bitmap = reader.getBitmap(chunk_i);
+  u32 tupleCount = reader->getTupleCount(chunk_i);
+  const auto bitmap = reader->getBitmap(chunk_i);
+  const bool requiresCopy = reader->readColumn(output_buffer, chunk_i);
   if (requiresCopy) {
     StringPointerArrayViewer viewer(reinterpret_cast<const u8*>(output_buffer.data()));
     return ChunkToArrowArrayConverter::convertStringChunk(viewer, tupleCount, bitmap);
@@ -62,17 +61,22 @@ template <typename T, typename U>
 
 //--------------------------------------------------------------------------------------------------
 void RecordBatchStreamReader::ColumnReadState::advance(int next_chunk_i) {
+  bool part_i_changed = false;
   while (global_chunk_i != next_chunk_i) {
     assert(global_chunk_i < next_chunk_i);
     if (part_i == -1 || part_info.num_chunks == ++chunk_i) {
       part_info = metadata->parts[column_info.part_offset + ++part_i];
+      part_i_changed = true;
       assert(part_i < column_info.num_parts);
       chunk_i = 0;
     }
     global_chunk_i++;
   }
-  const std::string filename = path_prefix + std::to_string(part_i);
-  Utils::readFileToMemory(filename, buffer);
+  if (part_i_changed) {
+    const std::string filename = path_prefix + std::to_string(part_i);
+    Utils::readFileToMemory(filename, buffer);
+    reader = BtrReader(buffer.data());
+  }
 }
 //--------------------------------------------------------------------------------------------------
 RecordBatchStreamReader::RecordBatchStreamReader(
