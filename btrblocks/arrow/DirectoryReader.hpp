@@ -20,10 +20,10 @@ class DirectoryReader {
   std::vector<char> raw_file_metadata;
   const FileMetadata* file_metadata;
 
+public:
   [[nodiscard]] std::vector<int> get_all_row_group_indices() const;
   [[nodiscard]] std::vector<int> get_all_column_indices() const;
 
-public:
   explicit DirectoryReader(std::string dir);
 
   [[nodiscard]] const FileMetadata* metadata() const { return file_metadata; }

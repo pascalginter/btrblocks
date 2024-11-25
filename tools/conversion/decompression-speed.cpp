@@ -12,6 +12,7 @@
 #include "common/Utils.hpp"
 #include "compression/BtrReader.hpp"
 #include "scheme/SchemePool.hpp"
+#include "arrow/DirectoryReader.hpp"
 // -------------------------------------------------------------------------------------
 DEFINE_string(btr, "btr", "Directory with btr input");
 DEFINE_int32(threads, 1, "Number of threads used. not specifying lets tbb decide");
@@ -23,6 +24,7 @@ DEFINE_bool(perfevent, false, "Profile with perf event if true");
 DEFINE_bool(output_summary, false, "Output a summary of total speed and size");
 DEFINE_bool(output_columns, true, "Output speeds and sizes for single columns");
 DEFINE_bool(print_simd_debug, false, "Print SIMD usage debug information");
+DEFINE_bool(arrow, false, "Measure arrow decompression speed");
 // -------------------------------------------------------------------------------------
 using namespace btrblocks;
 // -------------------------------------------------------------------------------------
@@ -39,6 +41,7 @@ void reset_bitmaps(const FileMetadata *metadata, std::vector<std::vector<BtrRead
 // -------------------------------------------------------------------------------------
 u64 measure(const FileMetadata *metadata, std::vector<std::vector<BtrReader>> &readers, std::vector<u64> &runtimes, std::vector<u32> &columns) {
     // Make sure no bitmap is cached
+    std::cout << "multi threaded measurement" << std::endl;
     reset_bitmaps(metadata, readers, columns);
 
     auto total_start_time = std::chrono::steady_clock::now();
@@ -64,6 +67,7 @@ u64 measure(const FileMetadata *metadata, std::vector<std::vector<BtrReader>> &r
 }
 // -------------------------------------------------------------------------------------
 u64 measure_single_thread(const FileMetadata *metadata, std::vector<std::vector<BtrReader>> &readers, std::vector<u64> &runtimes, std::vector<u32> &columns) {
+    std::cout << "single threaded measurement" << std::endl;
     reset_bitmaps(metadata, readers, columns);
 
     auto total_start_time = std::chrono::steady_clock::now();
@@ -88,6 +92,28 @@ u64 measure_single_thread(const FileMetadata *metadata, std::vector<std::vector<
     return total_runtime.count();
 }
 // -------------------------------------------------------------------------------------
+u64 measure_arrow_single_thread(btrblocks::arrow::DirectoryReader& reader, std::vector<u64> &runtimes, std::vector<u32> &columns){
+  std::cout << "arrow measurement" << std::endl;
+  auto total_start_time = std::chrono::steady_clock::now();
+  std::shared_ptr<::arrow::RecordBatch> batch;
+  std::shared_ptr<::arrow::RecordBatchReader> batchReader;
+  for (u32 column_i : columns) {
+    auto status = reader.GetRecordBatchReader(reader.get_all_row_group_indices() , {static_cast<int>(column_i)}, &batchReader);
+    assert(status.ok());
+    for (int chunk_i = 0; chunk_i < reader.num_row_groups(); chunk_i++) {
+      auto start_time = std::chrono::steady_clock::now();
+      status = batchReader->ReadNext(&batch);
+      assert(status.ok());
+      auto end_time = std::chrono::steady_clock::now();
+      auto runtime = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+      runtimes[column_i] += runtime.count();
+    }
+  }
+  auto total_end_time = std::chrono::steady_clock::now();
+  auto total_runtime = std::chrono::duration_cast<std::chrono::microseconds>(total_end_time - total_start_time);
+  return total_runtime.count();
+}
+// -------------------------------------------------------------------------------------
 int main(int argc, char **argv) {
     if (FLAGS_print_simd_debug) {
 #if BTR_USE_SIMD
@@ -97,6 +123,7 @@ int main(int argc, char **argv) {
 #endif
     }
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    std::cout << FLAGS_arrow << std::endl;
     std::filesystem::path btr_dir = FLAGS_btr;
 
     SchemePool::refresh();
@@ -117,7 +144,7 @@ int main(int argc, char **argv) {
     {
         auto metadata_path = btr_dir / "metadata";
         Utils::readFileToMemory(metadata_path.string(), raw_file_metadata);
-        file_metadata = reinterpret_cast<const FileMetadata *>(raw_file_metadata.data());
+        file_metadata = FileMetadata::fromMemory(raw_file_metadata.data());
     }
 
     // Filter columns
@@ -177,9 +204,15 @@ int main(int argc, char **argv) {
 
     u64 total_runtime = 0;
     // Actual measurement
-    if (false) {
+    if (threads == 1) {
+      if (FLAGS_arrow) {
+        btrblocks::arrow::DirectoryReader directoryReader(btr_dir);
+        total_runtime = measure_arrow_single_thread(directoryReader, runtimes, columns);
+      }else {
         total_runtime = measure_single_thread(file_metadata, readers, runtimes, columns);
+      }
     } else {
+      assert(!FLAGS_arrow);
         for (u32 rep = 0; rep < FLAGS_reps; rep++) {
             total_runtime += measure(file_metadata, readers, runtimes, columns);
         }
