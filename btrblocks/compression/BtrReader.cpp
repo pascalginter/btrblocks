@@ -29,6 +29,12 @@ BtrReader::~BtrReader() {
 }
 
 bool BtrReader::readColumn(std::vector<u8>& output_chunk_v, u32 index) {
+  auto output_chunk = get_data(output_chunk_v, this->getDecompressedSize(index) + SIMD_EXTRA_BYTES);
+  return readColumn(output_chunk, index);
+}
+
+
+bool BtrReader::readColumn(u8* output_chunk, u32 index) {
   // Fetch metadata for column
   auto meta = this->getChunkMetadata(index);
 
@@ -39,7 +45,6 @@ bool BtrReader::readColumn(std::vector<u8>& output_chunk_v, u32 index) {
   u32 tuple_count = meta->tuple_count;
   BitmapWrapper* bitmap = this->getBitmap(index);
 
-  auto output_chunk = get_data(output_chunk_v, this->getDecompressedSize(index) + SIMD_EXTRA_BYTES);
   bool requires_copy = false;
   // Decompress data
   switch (meta->type) {

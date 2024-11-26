@@ -5,28 +5,27 @@
 namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
-::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunk(
-    StringArrayViewer viewer, u32 tupleCount, BitmapWrapper* bitmap){
+::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunkNoCopy(
+    std::shared_ptr<::arrow::Buffer>&& buffer, u32 tupleCount, BitmapWrapper* bitmap){
+  StringArrayViewer viewer(buffer->data());
   auto null_bitmap = ::arrow::AllocateBitmap(tupleCount, ::arrow::default_memory_pool()).ValueOrDie();
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
-  auto data_buffer = ::arrow::AllocateBuffer(viewer.data_size(), ::arrow::default_memory_pool()).ValueOrDie();
-  memcpy(data_buffer->mutable_data(), viewer.data_ptr(), viewer.data_size());
-  auto offset_buffer = ::arrow::AllocateBuffer(viewer.data_offset()).ValueOrDie();
-  const auto offsets = reinterpret_cast<u32*>(offset_buffer->mutable_data());
-  const auto* slots = reinterpret_cast<const u32*>(viewer.slots_ptr);
+  auto data_buffer = ::arrow::SliceBuffer(buffer, viewer.data_offset(), viewer.data_size());
+  auto offset_buffer = ::arrow::SliceBuffer(buffer, 0, viewer.data_offset());
+  const auto offsets = reinterpret_cast<u32*>(buffer->mutable_data());
   for (u32 i=0; i<=tupleCount; i++) {
-    offsets[i] = slots[i] - viewer.data_offset();
+    offsets[i] -= viewer.data_offset();
   }
   auto array_data = ::arrow::ArrayData::Make(
     ::arrow::utf8(), tupleCount,
-    {null_bitmap, std::move(offset_buffer), std::move(data_buffer)},
-    bitmap->get_bitset()->count()
+    {null_bitmap, std::move(offset_buffer), std::move(data_buffer)}
   );
   return ::arrow::MakeArray(array_data);
 }
 //--------------------------------------------------------------------------------------------------
-::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunk(
-    StringPointerArrayViewer viewer, u32 tupleCount, BitmapWrapper* bitmap){
+::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunkCopy(
+    std::shared_ptr<::arrow::Buffer>&& buffer, u32 tupleCount, BitmapWrapper* bitmap){
+  StringPointerArrayViewer viewer(buffer->data());
   auto null_bitmap = ::arrow::AllocateBitmap(tupleCount, ::arrow::default_memory_pool()).ValueOrDie();
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
   auto data_buffer = ::arrow::AllocateBuffer(viewer.copied_data_size(tupleCount), ::arrow::default_memory_pool()).ValueOrDie();
@@ -45,8 +44,7 @@ namespace btrblocks::arrow {
 
   auto array_data = ::arrow::ArrayData::Make(
     ::arrow::utf8(), tupleCount,
-    {null_bitmap, std::move(offset_buffer), std::move(data_buffer)},
-    bitmap->get_bitset()->count()
+    {null_bitmap, std::move(offset_buffer), std::move(data_buffer)}
   );
   return ::arrow::MakeArray(array_data);
 }

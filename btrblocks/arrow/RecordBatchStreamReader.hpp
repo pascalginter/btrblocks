@@ -11,7 +11,6 @@ class RecordBatchStreamReader final : public ::arrow::RecordBatchReader {
   //------------------------------------------------------------------------------------------------
   class ColumnReadState {
     std::vector<char> buffer;
-    std::vector<u8> output_buffer;
 
     int chunk_index = 0;
     int global_chunk_i = -1;

@@ -22,10 +22,10 @@ struct ChunkToArrowArrayConverter {
     return builder.Finish();
   }
   //------------------------------------------------------------------------------------------------
-  static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertStringChunk(
-    StringArrayViewer viewer, u32 num_elements, BitmapWrapper* bitmap);
-  static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertStringChunk(
-   StringPointerArrayViewer viewer, u32 num_elements, BitmapWrapper* bitmap);
+  static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertStringChunkNoCopy(
+    std::shared_ptr<::arrow::Buffer>&& buffer, u32 num_elements, BitmapWrapper* bitmap);
+  static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertStringChunkCopy(
+   std::shared_ptr<::arrow::Buffer>&& buffer, u32 num_elements, BitmapWrapper* bitmap);
   //------------------------------------------------------------------------------------------------
   static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertStringChunk(
     const Vector<str>& vector, const Vector<BITMAP>& bitmap);

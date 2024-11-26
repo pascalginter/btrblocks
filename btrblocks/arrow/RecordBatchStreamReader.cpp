@@ -19,14 +19,15 @@ RecordBatchStreamReader::ColumnReadState::ColumnReadState(
 template <typename T, typename U>
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
     RecordBatchStreamReader::ColumnReadState::decompressNumericChunk(){
-  const bool requiresCopy = reader->readColumn(output_buffer, chunk_i);
+  return ::arrow::Status::Invalid("");
+  /*const bool requiresCopy = reader->readColumn(output_buffer, chunk_i);
   assert(!requiresCopy);
   const u32 tupleCount = reader->getTupleCount(chunk_i);
   auto* bitmap = reader->getBitmap(chunk_i);
   std::vector<u8> validityBytes(tupleCount);
   bitmap->writeValidityBytes(validityBytes.data());
   return ChunkToArrowArrayConverter::convertNumericChunk<T, U>(
-    reinterpret_cast<U*>(buffer.data()), tupleCount, validityBytes.data());
+    reinterpret_cast<U*>(buffer.data()), tupleCount, validityBytes.data());*/
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
@@ -35,13 +36,12 @@ template <typename T, typename U>
 
   u32 tupleCount = reader->getTupleCount(chunk_i);
   const auto bitmap = reader->getBitmap(chunk_i);
-  const bool requiresCopy = reader->readColumn(output_buffer, chunk_i);
+  auto outputBuffer = ::arrow::AllocateBuffer(reader->getDecompressedSize(chunk_i), ::arrow::default_memory_pool()).ValueOrDie();
+  const bool requiresCopy = reader->readColumn(outputBuffer->mutable_data(), chunk_i);
   if (requiresCopy) {
-    StringPointerArrayViewer viewer(reinterpret_cast<const u8*>(output_buffer.data()));
-    return ChunkToArrowArrayConverter::convertStringChunk(viewer, tupleCount, bitmap);
+    return ChunkToArrowArrayConverter::convertStringChunkCopy(std::move(outputBuffer), tupleCount, bitmap);
   } else {
-    StringArrayViewer viewer(reinterpret_cast<const u8*>(output_buffer.data()));
-    return ChunkToArrowArrayConverter::convertStringChunk(viewer, tupleCount, bitmap);
+    return ChunkToArrowArrayConverter::convertStringChunkNoCopy(std::move(outputBuffer), tupleCount, bitmap);
   }
 }
 //--------------------------------------------------------------------------------------------------

@@ -14,6 +14,7 @@ class BtrReader {
   explicit BtrReader(void* data);
   virtual ~BtrReader();
   bool readColumn(std::vector<u8>& output_chunk, u32 index);
+  bool readColumn(u8* output_chunk, u32 index);
   [[nodiscard]] string getSchemeDescription(u32 index);
   [[nodiscard]] string getBasicSchemeDescription(u32 index);
 
