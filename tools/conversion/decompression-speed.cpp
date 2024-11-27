@@ -94,19 +94,33 @@ u64 measure_single_thread(const FileMetadata *metadata, std::vector<std::vector<
 // -------------------------------------------------------------------------------------
 u64 measure_arrow_single_thread(btrblocks::arrow::DirectoryReader& reader, std::vector<u64> &runtimes, std::vector<u32> &columns){
   std::cout << "arrow measurement" << std::endl;
+
+  std::shared_ptr<::arrow::Schema> schema;
+  auto status = reader.GetSchema(&schema);
+  assert(status.ok());
+  // load data into memory
+  std::vector readers(columns.size(),
+    std::vector<std::shared_ptr<::arrow::RecordBatchReader>>(reader.num_row_groups(), nullptr));
+  int i=0;
+  for (int column : columns) {
+    for (int j=0; j!=reader.num_row_groups(); j++) {
+      status = reader.GetRecordBatchReader({j}, {column}, &readers[i][j]);
+      assert(status.ok());
+    }
+    i++;
+  }
+
   auto total_start_time = std::chrono::steady_clock::now();
   std::shared_ptr<::arrow::RecordBatch> batch;
-  std::shared_ptr<::arrow::RecordBatchReader> batchReader;
-  for (u32 column_i : columns) {
-    auto status = reader.GetRecordBatchReader(reader.get_all_row_group_indices() , {static_cast<int>(column_i)}, &batchReader);
+  for (int i=0; i!=columns.size(); i++) {
     assert(status.ok());
     for (int chunk_i = 0; chunk_i < reader.num_row_groups(); chunk_i++) {
       auto start_time = std::chrono::steady_clock::now();
-      status = batchReader->ReadNext(&batch);
+      status = readers[i][chunk_i]->ReadNext(&batch);
       assert(status.ok());
       auto end_time = std::chrono::steady_clock::now();
       auto runtime = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-      runtimes[column_i] += runtime.count();
+      runtimes[columns[i]] += runtime.count();
     }
   }
   auto total_end_time = std::chrono::steady_clock::now();
