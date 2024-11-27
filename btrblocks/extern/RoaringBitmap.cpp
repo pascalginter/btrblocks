@@ -60,12 +60,25 @@ void BitmapWrapper::writeValidityBytes(btrblocks::BITMAP* dest){
 }
 
 void BitmapWrapper::writeArrowBitmap(btrblocks::BITMAP* dest) {
-  auto bitset = this->get_bitset();
-
-  // Arrow bitmap: is_valid[j] -> bitmap[j / 8] & (1 << (j % 8))
-  // https://arrow.apache.org/docs/format/Columnar.html#validity-bitmaps
-  for (u32 i = 0; i < this->m_tuple_count; i++) {
-    dest[i / 8] |= bitset->test(i) ? (1 << (i % 8)) : 0;
+  u32 destSize = (m_cardinality + 7) / 8;
+  switch (m_type) {
+    case BitmapType::ALLONES:
+      memset(dest, 255, destSize);
+      break;
+    case BitmapType::ALLZEROS:
+      memset(dest, 0, destSize);
+      break;
+    case BitmapType::REGULAR:
+      memset(dest, 0, destSize);
+      for (uint32_t setBit : m_roaring) {
+        dest[setBit / 8] |= 1 << (setBit % 8);
+      }
+      break;
+    case BitmapType::FLIPPED:
+      memset(dest, 255, destSize);
+      for (uint32_t unsetBit : m_roaring) {
+        dest[unsetBit / 8] ^= 1 << (unsetBit % 8);
+      }
   }
 }
 
