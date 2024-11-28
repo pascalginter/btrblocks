@@ -70,13 +70,13 @@ void BitmapWrapper::writeArrowBitmap(btrblocks::BITMAP* dest) {
       break;
     case BitmapType::REGULAR:
       memset(dest, 0, destSize);
-      for (uint32_t setBit : m_roaring) {
+      for (const u32 setBit : m_roaring) {
         dest[setBit / 8] |= 1 << (setBit % 8);
       }
       break;
     case BitmapType::FLIPPED:
       memset(dest, 255, destSize);
-      for (uint32_t unsetBit : m_roaring) {
+      for (const u32 unsetBit : m_roaring) {
         dest[unsetBit / 8] ^= 1 << (unsetBit % 8);
       }
   }

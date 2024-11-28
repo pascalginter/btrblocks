@@ -12,6 +12,9 @@ struct StringPointerArrayViewer {
   struct View {
     u32 length;
     u32 offset;
+    // assumes correct semantics
+    bool operator<(const View& other) const { return offset < other.offset; }
+    bool operator==(const View& other) const { return offset == other.offset; }
   };
   static_assert(sizeof(View) == 8);
   const View* views;
@@ -26,6 +29,24 @@ struct StringPointerArrayViewer {
     for (u32 i=0; i!=tuple_count; i++) {
       data_size += views[i].length;
     }
+    return data_size;
+  }
+
+  [[nodiscard]] inline u32 data_size(u32 tuple_count) {
+    u32 data_size = 0;
+    for (u32 i=0; i!=tuple_count; i++) {
+      data_size = std::max(data_size, views[i].offset + views[i].length);
+    }
+    return data_size;
+  }
+
+  [[nodiscard]] inline u32 data_offset(u32 tuple_count) {
+    u32 data_size = -1;
+    for (u32 i=0; i!=tuple_count; i++) {
+      data_size = std::min(data_size, views[i].offset);
+    }
+    // std::cout << data_size - tuple_count * sizeof(View) << std::endl;
+    // assert(data_size == tuple_count * sizeof(View));
     return data_size;
   }
 
