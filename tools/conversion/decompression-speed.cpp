@@ -132,7 +132,6 @@ int main(int argc, char **argv) {
 #endif
     }
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-    std::cout << FLAGS_arrow << std::endl;
     std::filesystem::path btr_dir = FLAGS_btr;
 
     SchemePool::refresh();

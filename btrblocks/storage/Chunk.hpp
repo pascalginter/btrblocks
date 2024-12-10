@@ -40,7 +40,7 @@ class Chunk {
 
   inline const str operator()(u32 c, u32 i) const {
     if (column_requires_copy[c]) {
-      StringPointerArrayViewer viewer(columns[c].get());
+      StringPointerArrayViewer viewer(columns[c].get(), tuple_count);
       return viewer(i);
     } else {
       return StringArrayViewer::get(columns[c].get(), i);

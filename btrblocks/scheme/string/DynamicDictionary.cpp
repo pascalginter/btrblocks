@@ -219,8 +219,8 @@ u32 DynamicDictionary::getDecompressedSizeNoCopy(const u8* src,
   // We need to get rid of the (tuple_count + 1) slots
   auto strings_size =
       col_struct.total_decompressed_size - ((tuple_count + 1) * sizeof(StringArrayViewer::Slot));
-  auto views_size = (tuple_count + 4) * sizeof(StringPointerArrayViewer::View);
-  return strings_size + views_size;
+  auto fixed_size = tuple_count * sizeof(INTEGER) + ((tuple_count + 1) * sizeof(StringArrayViewer::Slot));
+  return strings_size + fixed_size;
 }
 // -------------------------------------------------------------------------------------
 void DynamicDictionary::decompress(u8* dest,
@@ -426,11 +426,10 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
   const auto& col_struct = *reinterpret_cast<const DynamicDictionaryStructure*>(src);
 
   // Build views
-  thread_local std::vector<std::vector<StringPointerArrayViewer::View>> views_v;
-  auto views_ptr = get_level_data(views_v, col_struct.num_codes, level);
+  auto slots_ptr = reinterpret_cast<StringArrayViewer::Slot*>(dest + tuple_count * sizeof(INTEGER));
 
-  auto dest_views = reinterpret_cast<StringPointerArrayViewer::View*>(dest);
-  auto current_offset = (tuple_count + 4) * sizeof(StringPointerArrayViewer::View);
+  auto dest_views = reinterpret_cast<INTEGER*>(dest);
+  auto current_offset = tuple_count * sizeof(INTEGER) + (col_struct.num_codes + 1) * sizeof(StringArrayViewer::Slot);
 
   // Ideas for better performance
   // - save dictionary strings as StringPointerArrayView straight away
@@ -452,10 +451,10 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
 
     // Fill lengths and offsets
     u32 start_offset = current_offset;
+    slots_ptr[0].offset = current_offset - tuple_count * sizeof(INTEGER);
     for (u32 c = 0; c < col_struct.num_codes; c++) {
-      views_ptr[c].offset = current_offset;
-      views_ptr[c].length = uncompressed_lengths_ptr[c];
       current_offset += uncompressed_lengths_ptr[c];
+      slots_ptr[c + 1].offset = current_offset - tuple_count * sizeof(INTEGER);
     }
     u32 total_length = current_offset - start_offset;
 
@@ -470,10 +469,10 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
   } else {
     auto start_offset = current_offset;
     StringArrayViewer dict_array(col_struct.data);
+    slots_ptr[0].offset = current_offset - tuple_count * sizeof(INTEGER);
     for (u32 c = 0; c < col_struct.num_codes; c++) {
-      views_ptr[c].length = dict_array.size(c);
-      views_ptr[c].offset = current_offset;
-      current_offset += views_ptr[c].length;
+      current_offset += dict_array.size(c);
+      slots_ptr[c + 1].offset = current_offset - tuple_count * sizeof(INTEGER);
     }
 
     std::memcpy(reinterpret_cast<char*>(dest) + start_offset, dict_array.get_pointer(0),
@@ -495,17 +494,16 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
     u32 runs_count = rle.decompressRuns(values_ptr, counts_ptr, nullptr, compressed_codes_ptr,
                                         tuple_count, level + 1);
 
-    static_assert(sizeof(StringPointerArrayViewer::View) == 8);
+    static_assert(sizeof(StringArrayViewer::Slot) == 4);
 #ifdef BTR_USE_SIMD
     for (u32 run = 0; run < runs_count; run++) {
       INTEGER code = values_ptr[run];
-      auto* data = reinterpret_cast<long long*>(views_ptr + code);
-      __m256i data_v = _mm256_set1_epi64x(*data);
+      __m256i code_v = _mm256_set1_epi32(code);
       INTEGER run_length = counts_ptr[run];
-      auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
-      for (INTEGER repeat = 0; repeat < run_length; repeat += 4) {
-        _mm256_storeu_si256(dest_view_simd, data_v);
-        dest_view_simd++;
+      auto dest_simd = reinterpret_cast<__m256i*>(dest);
+      for (INTEGER repeat = 0; repeat < run_length; repeat += 8) {
+        _mm256_storeu_si256(dest_simd, code_v);
+        dest_simd++;
       }
       dest_views += run_length;
     }
@@ -526,50 +524,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
         IntegerSchemePicker::MyTypeWrapper::getScheme(col_struct.codes_scheme);
     codes_scheme.decompress(decompressed_codes, nullptr, compressed_codes_ptr, tuple_count,
                             level + 1);
-
-    u32 row_i = 0;
-#ifdef BTR_USE_SIMD
-    static_assert(sizeof(*views_ptr) == 8);
-    static_assert(SIMD_EXTRA_BYTES >= 4 * sizeof(__m256i));
-    if (tuple_count >= 16) {
-      while (row_i < tuple_count - 15) {
-        // We cannot write out of bounds here like we do for other dict
-        // implementations because it would destroy the string data.
-
-        // Load codes.
-        __m128i codes_0 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 0));
-        __m128i codes_1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 4));
-        __m128i codes_2 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 8));
-        __m128i codes_3 = _mm_loadu_si128(reinterpret_cast<__m128i*>(decompressed_codes + 12));
-
-        // Gather values.
-        __m256i values_0 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_0, 8);
-        __m256i values_1 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_1, 8);
-        __m256i values_2 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_2, 8);
-        __m256i values_3 =
-            _mm256_i32gather_epi64(reinterpret_cast<long long*>(views_ptr), codes_3, 8);
-
-        // Store values.
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 0), values_0);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 4), values_1);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 8), values_2);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(dest_views + 12), values_3);
-
-        decompressed_codes += 16;
-        dest_views += 16;
-        row_i += 16;
-      }
-    }
-#endif
-
-    // Write remaining values (up to 15)
-    while (row_i < tuple_count) {
-      *dest_views++ = views_ptr[*decompressed_codes++];
-      row_i++;
-    }
+    memcpy(dest, decompressed_codes, tuple_count * sizeof(INTEGER));
   }
 
   return true;

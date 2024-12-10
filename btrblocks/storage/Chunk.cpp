@@ -202,7 +202,7 @@ bool InputChunk::compareContents(u8* their_data,
         str my_str = my_view(idx);
         str their_str;
         if (requires_copy) {
-          auto their_view = btrblocks::StringPointerArrayViewer(their_data);
+          auto their_view = btrblocks::StringPointerArrayViewer(their_data, their_tuple_count);
           their_str = their_view(idx);
         } else {
           auto their_view = btrblocks::StringArrayViewer(their_data);

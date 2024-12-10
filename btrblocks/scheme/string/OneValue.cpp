@@ -32,7 +32,8 @@ u32 OneValue::compress(const StringArrayViewer,
 // -------------------------------------------------------------------------------------
 u32 OneValue::getDecompressedSizeNoCopy(const u8* src, u32 tuple_count, BitmapWrapper*) {
   auto& col_struct = *reinterpret_cast<const OneValueStructure*>(src);
-  u32 total_size = tuple_count * sizeof(StringPointerArrayViewer::View);
+  u32 total_size = tuple_count  * sizeof(INTEGER);
+  total_size += 2 * sizeof(StringArrayViewer::Slot);
   total_size += col_struct.length;
   return total_size;
 }
@@ -155,30 +156,19 @@ bool OneValue::decompressNoCopy(u8* dest,
     return true;
   }
 
+  std::cout << "one value" << std::endl;
+
   auto& col_struct = *reinterpret_cast<const OneValueStructure*>(src);
 
   // We only have one string write the same offset everywhere
-  auto dest_views = reinterpret_cast<StringPointerArrayViewer::View*>(dest);
-  StringPointerArrayViewer::View view = {
-      .length = col_struct.length,
-      .offset = static_cast<u32>(tuple_count * sizeof(StringPointerArrayViewer::View))};
+  auto* dest_codes = reinterpret_cast<INTEGER*>(dest);
+  auto* dest_offsets = reinterpret_cast<StringArrayViewer::Slot*>(dest_codes + tuple_count);
 
-#ifdef BTR_USE_SIMD
-  auto dest_view_simd = reinterpret_cast<__m256i*>(dest_views);
-  auto* data = reinterpret_cast<long long*>(&view);
-  __m256i data_v = _mm256_set1_epi64x(*data);
-  for (u32 idx = 0; idx < tuple_count; idx += 16) {
-    _mm256_storeu_si256(dest_view_simd, data_v);
-    _mm256_storeu_si256(dest_view_simd + 1, data_v);
-    _mm256_storeu_si256(dest_view_simd + 2, data_v);
-    _mm256_storeu_si256(dest_view_simd + 3, data_v);
-    dest_view_simd += 4;
-  }
-#else
-  std::fill_n(dest_views, tuple_count, view);
-#endif
+  dest_offsets[0].offset = 2 * sizeof(INTEGER);
+  dest_offsets[1].offset = dest_offsets[0].offset + col_struct.length;
+  memset(dest_codes, 0, tuple_count * sizeof(INTEGER));
 
-  auto dest_strings = reinterpret_cast<u8*>(dest_views + tuple_count);
+  auto dest_strings = reinterpret_cast<u8*>(dest_offsets + 2);
   std::memcpy(dest_strings, col_struct.data, col_struct.length);
   return true;
 }

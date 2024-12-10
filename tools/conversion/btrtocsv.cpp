@@ -46,6 +46,7 @@ void outputChunk(std::ofstream &csvstream, u32 tuple_count,
         for (size_t col = 0; col < decompressed_columns.size(); col++) {
             BtrReader &reader = readers[col][counters[col].first];
             BitmapWrapper *nullmap = reader.getBitmap(counters[col].second-1);
+            u32 local_tuple_count = reader.getTupleCount(counters[col].second-1);
 
             bool is_null;
             if (nullmap->type() == BitmapType::ALLZEROS) {
@@ -71,7 +72,7 @@ void outputChunk(std::ofstream &csvstream, u32 tuple_count,
                     case ColumnType::STRING: {
                         std::string data;
                         if (requires_copy[col]) {
-                            auto string_pointer_array_viewer = StringPointerArrayViewer(reinterpret_cast<const u8 *>(decompressed_columns[col].data()));
+                            auto string_pointer_array_viewer = StringPointerArrayViewer(reinterpret_cast<const u8 *>(decompressed_columns[col].data()), local_tuple_count);
                             data = string_pointer_array_viewer(row);
                         } else {
                             auto string_array_viewer = StringArrayViewer(reinterpret_cast<const u8 *>(decompressed_columns[col].data()));

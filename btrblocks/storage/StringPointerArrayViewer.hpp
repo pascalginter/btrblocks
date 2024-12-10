@@ -9,49 +9,37 @@ namespace btrblocks {
  * and the interface of StringArrayViewer
  */
 struct StringPointerArrayViewer {
-  struct View {
-    u32 length;
-    u32 offset;
-    // assumes correct semantics
-    bool operator<(const View& other) const { return offset < other.offset; }
-    bool operator==(const View& other) const { return offset == other.offset; }
-  };
-  static_assert(sizeof(View) == 8);
-  const View* views;
-  const u8* data;
+  size_t tupleCount;
+  const INTEGER* indices;
+  StringArrayViewer viewer;
 
-  explicit StringPointerArrayViewer(const u8* data_) : data(data_) {
-    this->views = reinterpret_cast<const View*>(data_);
+  explicit StringPointerArrayViewer(const u8* data_, size_t tupleCount_)
+    : tupleCount(tupleCount_), viewer(data_ + tupleCount * sizeof(INTEGER))  {
+    this->indices = reinterpret_cast<const INTEGER*>(data_);
   }
 
-  [[nodiscard]] inline u32 copied_data_size(u32 tuple_count) {
+  [[nodiscard]] inline u32 copied_data_size() {
     u32 data_size = 0;
-    for (u32 i=0; i!=tuple_count; i++) {
-      data_size += views[i].length;
+    for (u32 i=0; i!=tupleCount; i++) {
+      data_size += viewer.size(indices[i]);
     }
     return data_size;
   }
 
-  [[nodiscard]] inline u32 data_size(u32 tuple_count) {
-    u32 data_size = 0;
-    for (u32 i=0; i!=tuple_count; i++) {
-      data_size = std::max(data_size, views[i].offset + views[i].length);
-    }
-    return data_size;
+  [[nodiscard]] inline u32 data_size() {
+    return viewer.data_size();
   }
 
-  [[nodiscard]] inline u32 data_offset(u32 tuple_count) {
-    u32 data_size = -1;
-    for (u32 i=0; i!=tuple_count; i++) {
-      data_size = std::min(data_size, views[i].offset);
-    }
-    // std::cout << data_size - tuple_count * sizeof(View) << std::endl;
-    // assert(data_size == tuple_count * sizeof(View));
-    return data_size;
+  [[nodiscard]] inline u32 viewer_offset() {
+    return tupleCount * sizeof(INTEGER);
+  }
+
+  [[nodiscard]] inline u32 data_offset() {
+     return viewer_offset() + viewer.data_offset();
   }
 
   inline str operator()(u32 i) const {
-    return {reinterpret_cast<const char*>(this->views) + views[i].offset, views[i].length};
+    return viewer(indices[i]);
   }
 };
 // -------------------------------------------------------------------------------------
