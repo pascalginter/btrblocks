@@ -437,6 +437,56 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
   // - optimize the loop at the with avx gather or cache miss hiding through
   // vectorization
 
+  const u8* compressed_codes_ptr = col_struct.data + col_struct.codes_offset;
+  if (col_struct.use_rle_optimized_path) {
+    IntegerScheme& codes_scheme =
+        IntegerSchemePicker::MyTypeWrapper::getScheme(col_struct.codes_scheme);
+    auto& rle = dynamic_cast<btrblocks::integers::RLE&>(codes_scheme);
+
+    thread_local std::vector<std::vector<INTEGER>> values_v;
+    auto values_ptr = get_level_data(values_v, tuple_count + SIMD_EXTRA_ELEMENTS(INTEGER), level);
+
+    thread_local std::vector<std::vector<INTEGER>> counts_v;
+    auto counts_ptr = get_level_data(counts_v, tuple_count + SIMD_EXTRA_ELEMENTS(INTEGER), level);
+
+    u32 runs_count = rle.decompressRuns(values_ptr, counts_ptr, nullptr, compressed_codes_ptr,
+                                        tuple_count, level + 1);
+
+    static_assert(sizeof(StringArrayViewer::Slot) == 4);
+#ifdef BTR_USE_SIMD
+    auto* decode = reinterpret_cast<INTEGER*>(dest);
+    for (u32 run = 0; run < runs_count; run++) {
+      INTEGER code = values_ptr[run];
+      assert(code < 3);
+      __m256i code_v = _mm256_set1_epi32(code);
+      INTEGER run_length = counts_ptr[run];
+      auto dest_simd = reinterpret_cast<__m256i*>(decode);
+      for (INTEGER repeat = 0; repeat < run_length; repeat += 8) {
+        _mm256_storeu_si256(dest_simd, code_v);
+        dest_simd++;
+      }
+      decode += run_length;
+    }
+#else
+    for (u32 run = 0; run < runs_count; run++) {
+      INTEGER code = values_ptr[run];
+      for (INTEGER repeat = 0; repeat < counts_ptr[run]; ++repeat) {
+        *dest_views++ = views_ptr[code];
+      }
+    }
+#endif
+  } else {
+    // Decompress codes
+    thread_local std::vector<std::vector<INTEGER>> decompressed_codes_v;
+    auto decompressed_codes =
+        get_level_data(decompressed_codes_v, tuple_count + SIMD_EXTRA_ELEMENTS(INTEGER), level);
+    IntegerScheme& codes_scheme =
+        IntegerSchemePicker::MyTypeWrapper::getScheme(col_struct.codes_scheme);
+    codes_scheme.decompress(decompressed_codes, nullptr, compressed_codes_ptr, tuple_count,
+                            level + 1);
+    memcpy(dest, decompressed_codes, tuple_count * sizeof(INTEGER));
+  }
+
   // Copy strings to destination
   if (col_struct.use_fsst) {
     // Decompress lengths
@@ -479,53 +529,7 @@ bool DynamicDictionary::decompressNoCopy(u8* dest,
                 current_offset - start_offset);
   }
 
-  const u8* compressed_codes_ptr = col_struct.data + col_struct.codes_offset;
-  if (col_struct.use_rle_optimized_path) {
-    IntegerScheme& codes_scheme =
-        IntegerSchemePicker::MyTypeWrapper::getScheme(col_struct.codes_scheme);
-    auto& rle = dynamic_cast<btrblocks::integers::RLE&>(codes_scheme);
 
-    thread_local std::vector<std::vector<INTEGER>> values_v;
-    auto values_ptr = get_level_data(values_v, tuple_count + SIMD_EXTRA_ELEMENTS(INTEGER), level);
-
-    thread_local std::vector<std::vector<INTEGER>> counts_v;
-    auto counts_ptr = get_level_data(counts_v, tuple_count + SIMD_EXTRA_ELEMENTS(INTEGER), level);
-
-    u32 runs_count = rle.decompressRuns(values_ptr, counts_ptr, nullptr, compressed_codes_ptr,
-                                        tuple_count, level + 1);
-
-    static_assert(sizeof(StringArrayViewer::Slot) == 4);
-#ifdef BTR_USE_SIMD
-    for (u32 run = 0; run < runs_count; run++) {
-      INTEGER code = values_ptr[run];
-      __m256i code_v = _mm256_set1_epi32(code);
-      INTEGER run_length = counts_ptr[run];
-      auto dest_simd = reinterpret_cast<__m256i*>(dest);
-      for (INTEGER repeat = 0; repeat < run_length; repeat += 8) {
-        _mm256_storeu_si256(dest_simd, code_v);
-        dest_simd++;
-      }
-      dest_views += run_length;
-    }
-#else
-    for (u32 run = 0; run < runs_count; run++) {
-      INTEGER code = values_ptr[run];
-      for (INTEGER repeat = 0; repeat < counts_ptr[run]; ++repeat) {
-        *dest_views++ = views_ptr[code];
-      }
-    }
-#endif
-  } else {
-    // Decompress codes
-    thread_local std::vector<std::vector<INTEGER>> decompressed_codes_v;
-    auto decompressed_codes =
-        get_level_data(decompressed_codes_v, tuple_count + SIMD_EXTRA_ELEMENTS(INTEGER), level);
-    IntegerScheme& codes_scheme =
-        IntegerSchemePicker::MyTypeWrapper::getScheme(col_struct.codes_scheme);
-    codes_scheme.decompress(decompressed_codes, nullptr, compressed_codes_ptr, tuple_count,
-                            level + 1);
-    memcpy(dest, decompressed_codes, tuple_count * sizeof(INTEGER));
-  }
 
   return true;
 }
