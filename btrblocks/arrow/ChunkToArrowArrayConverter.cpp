@@ -1,8 +1,11 @@
 #include <compression/BtrReader.hpp>
 
 #include "arrow/ChunkToArrowArrayConverter.hpp"
+
+#include <common/Log.hpp>
 //--------------------------------------------------------------------------------------------------
 namespace btrblocks::arrow {
+//--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunkNoCopy(
     std::shared_ptr<::arrow::Buffer>&& buffer, u32 tupleCount, BitmapWrapper* bitmap){
@@ -11,7 +14,10 @@ namespace btrblocks::arrow {
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
   auto data_buffer = ::arrow::SliceMutableBuffer(buffer, viewer.data_offset(), viewer.data_size());
   auto offset_buffer = ::arrow::SliceMutableBuffer(buffer, 0, viewer.data_offset());
-  const auto offsets = reinterpret_cast<u32*>(buffer->mutable_data());
+  const auto offsets = reinterpret_cast<u32*>(offset_buffer->mutable_data());
+  auto final_offset = reinterpret_cast<const StringArrayViewer::Slot*>(viewer.slots_ptr)[tupleCount].offset;
+  assert(viewer.data_offset() + viewer.data_size() <= buffer->capacity());
+  assert(tupleCount == viewer.tuple_count());
   for (u32 i=1; i<=tupleCount; i++) {
     offsets[i] -= offsets[0];
   }
@@ -42,12 +48,12 @@ namespace btrblocks::arrow {
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
   auto index_array_data = ::arrow::ArrayData::Make(
     ::arrow::int32(), tupleCount,
-    {std::move(null_bitmap), std::move(index_buffer), nullptr}
+    {std::move(null_bitmap), std::move(index_buffer)}
   );
   auto index_array = ::arrow::MakeArray(index_array_data);
 
   auto dictionary_array_data = ::arrow::ArrayData::Make(
-    ::arrow::utf8(), -1,
+    ::arrow::utf8(), unique_tuple_count,
     {nullptr, std::move(offsets_buffer), std::move(char_buffer)}
   );
   auto dictionary_array = ::arrow::MakeArray(dictionary_array_data);
