@@ -28,7 +28,7 @@ ExternalProject_Get_Property(tbb_src source_dir)
 ExternalProject_Get_Property(tbb_src binary_dir)
 
 set(TBB_INCLUDE_DIR ${source_dir}/include)
-set(TBB_LIBRARY_PATH ${binary_dir}/gnu_13.2_cxx11_64_relwithdebinfo/libtbb.so)
+set(TBB_LIBRARY_PATH ${binary_dir}/gnu_13.3_cxx11_64_relwithdebinfo/libtbb.so)
 
 file(MAKE_DIRECTORY ${TBB_INCLUDE_DIR})
 
