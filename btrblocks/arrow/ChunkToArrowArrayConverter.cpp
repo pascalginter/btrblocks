@@ -15,8 +15,6 @@ namespace btrblocks::arrow {
   auto data_buffer = ::arrow::SliceMutableBuffer(buffer, viewer.data_offset(), viewer.data_size());
   auto offset_buffer = ::arrow::SliceMutableBuffer(buffer, 0, viewer.data_offset());
   const auto offsets = reinterpret_cast<u32*>(offset_buffer->mutable_data());
-  auto final_offset = reinterpret_cast<const StringArrayViewer::Slot*>(viewer.slots_ptr)[tupleCount].offset;
-  assert(viewer.data_offset() + viewer.data_size() <= buffer->capacity());
   assert(tupleCount == viewer.tuple_count());
   for (u32 i=1; i<=tupleCount; i++) {
     offsets[i] -= offsets[0];

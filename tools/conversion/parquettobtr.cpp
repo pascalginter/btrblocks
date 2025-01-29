@@ -40,7 +40,7 @@ int main(int argc, char** argv){
 
   btrblocks::SchemePool::refresh();
 
-  btrblocks::Relation relation= btrblocks::arrow::parseArrowTable(table);
+  btrblocks::Relation relation = btrblocks::arrow::parseArrowTable(table);
   btrblocks::files::writeDirectory(relation, FLAGS_btr + "/", "stats.txt", "compressionout.txt");
   std::cout << "Wrote btr data successfully\n";
   return 0;

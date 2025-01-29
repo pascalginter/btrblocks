@@ -30,7 +30,7 @@ struct StringArrayViewer {
   }
 
   [[nodiscard]] inline u32 tuple_count() const {
-    // std::cout << "data offset " << data_offset() << std::endl;
+    assert(data_offset() % sizeof(Slot) == 0);
     return data_offset() / sizeof(Slot) - 1;
   }
 
