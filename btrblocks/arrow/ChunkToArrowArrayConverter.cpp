@@ -10,12 +10,13 @@ namespace btrblocks::arrow {
   StringArrayViewer viewer(buffer->data());
   auto null_bitmap = ::arrow::AllocateBitmap(tupleCount, ::arrow::default_memory_pool()).ValueOrDie();
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
-  auto data_buffer = ::arrow::SliceBuffer(buffer, viewer.data_offset(), viewer.data_size());
-  auto offset_buffer = ::arrow::SliceBuffer(buffer, 0, viewer.data_offset());
+  auto data_buffer = ::arrow::SliceMutableBuffer(buffer, viewer.data_offset(), viewer.data_size());
+  auto offset_buffer = ::arrow::SliceMutableBuffer(buffer, 0, viewer.data_offset());
   const auto offsets = reinterpret_cast<u32*>(buffer->mutable_data());
-  for (u32 i=0; i<=tupleCount; i++) {
-    offsets[i] -= viewer.data_offset();
+  for (u32 i=1; i<=tupleCount; i++) {
+    offsets[i] -= offsets[0];
   }
+  offsets[0] = 0;
   auto array_data = ::arrow::ArrayData::Make(
     ::arrow::utf8(), tupleCount,
     {null_bitmap, std::move(offset_buffer), std::move(data_buffer)}
