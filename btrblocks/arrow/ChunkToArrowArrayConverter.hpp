@@ -3,8 +3,6 @@
 #include <arrow/api.h>
 
 #include "extern/RoaringBitmap.hpp"
-#include "storage/StringArrayViewer.hpp"
-#include "storage/StringPointerArrayViewer.hpp"
 #include "compression/BtrReader.hpp"
 //--------------------------------------------------------------------------------------------------
 namespace btrblocks::arrow {
@@ -14,12 +12,8 @@ struct ChunkToArrowArrayConverter {
   template <typename T, typename U>
   static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertNumericChunk(
       U* data, u32 num_elements, unsigned char* bitmap) {
-    std::vector<u8> output_buffer(num_elements * sizeof(U));
     ::arrow::NumericBuilder<T> builder;
-
-    BtrReader reader(data);
-    builder.AppendValues(reinterpret_cast<U*>(
-      output_buffer.data()), static_cast<int64_t>(num_elements), bitmap).ok();
+    builder.AppendValues(data, static_cast<int64_t>(num_elements), bitmap).ok();
     return builder.Finish();
   }
   //------------------------------------------------------------------------------------------------

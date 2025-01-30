@@ -27,7 +27,7 @@ template <typename T, typename U>
   std::vector<u8> validityBytes(tupleCount);
   bitmap->writeValidityBytes(validityBytes.data());
   return ChunkToArrowArrayConverter::convertNumericChunk<T, U>(
-    reinterpret_cast<U*>(buffer.data()), tupleCount, validityBytes.data());
+    reinterpret_cast<U*>(outputBuffer->mutable_data()), tupleCount, validityBytes.data());
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
