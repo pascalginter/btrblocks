@@ -10,15 +10,16 @@
 namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
 struct ChunkToArrowArrayConverter {
-  //------------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
   template <typename T, typename U>
   static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertNumericChunk(
-    U* buffer, u32 tupleCount, const BITMAP* bitmap) {
-    std::vector<u8> output_buffer(tupleCount * sizeof(U));
+      U* data, u32 num_elements, unsigned char* bitmap) {
+    std::vector<u8> output_buffer(num_elements * sizeof(U));
     ::arrow::NumericBuilder<T> builder;
 
-    BtrReader reader(buffer);
-    builder.AppendValues(reinterpret_cast<U*>(output_buffer.data()), static_cast<int64_t>(tupleCount), bitmap).ok();
+    BtrReader reader(data);
+    builder.AppendValues(reinterpret_cast<U*>(
+      output_buffer.data()), static_cast<int64_t>(num_elements), bitmap).ok();
     return builder.Finish();
   }
   //------------------------------------------------------------------------------------------------

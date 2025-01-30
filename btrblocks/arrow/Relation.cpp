@@ -64,13 +64,14 @@ Column parseStringArrowColumn(const std::string& name,
 // ------------------------------------------------------------------------------
 std::optional<Column> parseArrowColumn(const std::string& name,
                         const std::shared_ptr<::arrow::ChunkedArray>& chunkedArr){
-    if (chunkedArr->type() == ::arrow::int32()) {
+    if (chunkedArr->type() == ::arrow::int32() || chunkedArr->type() == ::arrow::date32()) {
       return parseFixedSizeArrowColumn<INTEGER>(name, chunkedArr);
     }else if (chunkedArr->type() == ::arrow::float64()){
       return parseFixedSizeArrowColumn<DOUBLE>(name, chunkedArr);
     }else if (chunkedArr->type() == ::arrow::utf8()){
       return parseStringArrowColumn(name, chunkedArr);
     }else{
+      std::cout << chunkedArr->type()->ToString() << std::endl;
       return std::nullopt;
     }
 }
@@ -96,11 +97,11 @@ Relation parseArrowTable(const std::shared_ptr<::arrow::Table>& table){
     switch (column.type) {
       case ColumnType::INTEGER:
         array = ChunkToArrowArrayConverter::convertNumericChunk<::arrow::Int32Type, int32_t>(
-          column.integers().data, column.size(), column.bitmaps().data);
+          column.integers().data, column.size(), column.bitmap.data);
         break;
       case ColumnType::DOUBLE:
         array = ChunkToArrowArrayConverter::convertNumericChunk<::arrow::DoubleType, double>(
-          column.doubles().data, column.size(), column.bitmaps().data);
+          column.doubles().data, column.size(), column.bitmap.data);
         break;
       case ColumnType::STRING:
         array = ChunkToArrowArrayConverter::convertStringChunk(column.strings(), column.bitmap);

@@ -85,7 +85,7 @@ std::vector<int> DirectoryReader::get_all_column_indices() const {
 ::arrow::Status DirectoryReader::ReadTable(const std::vector<int>& column_indices,
                           std::shared_ptr<::arrow::Table>* out){
   std::shared_ptr<::arrow::RecordBatchReader> recordBatchReader;
-  ARROW_RETURN_NOT_OK(GetRecordBatchReader(column_indices, &recordBatchReader));
+  ARROW_RETURN_NOT_OK(GetRecordBatchReader(get_all_row_group_indices(), column_indices, &recordBatchReader));
   auto result = recordBatchReader->ToTable();
   if (result.ok()) *out = result.ValueOrDie();
   return result.status();

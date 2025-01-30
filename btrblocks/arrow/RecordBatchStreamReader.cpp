@@ -19,21 +19,19 @@ RecordBatchStreamReader::ColumnReadState::ColumnReadState(
 template <typename T, typename U>
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
     RecordBatchStreamReader::ColumnReadState::decompressNumericChunk(){
-  return ::arrow::Status::Invalid("");
-  /*const bool requiresCopy = reader->readColumn(output_buffer, chunk_i);
+  auto outputBuffer = ::arrow::AllocateBuffer(reader->getDecompressedSize(chunk_i), ::arrow::default_memory_pool()).ValueOrDie();
+  const bool requiresCopy = reader->readColumn(outputBuffer->mutable_data(), chunk_i);
   assert(!requiresCopy);
   const u32 tupleCount = reader->getTupleCount(chunk_i);
   auto* bitmap = reader->getBitmap(chunk_i);
   std::vector<u8> validityBytes(tupleCount);
   bitmap->writeValidityBytes(validityBytes.data());
   return ChunkToArrowArrayConverter::convertNumericChunk<T, U>(
-    reinterpret_cast<U*>(buffer.data()), tupleCount, validityBytes.data());*/
+    reinterpret_cast<U*>(buffer.data()), tupleCount, validityBytes.data());
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>>
     RecordBatchStreamReader::ColumnReadState::decompressStringChunk(){
-  ::arrow::StringBuilder builder;
-
   u32 tupleCount = reader->getTupleCount(chunk_i);
   const auto bitmap = reader->getBitmap(chunk_i);
   auto outputBuffer = ::arrow::AllocateBuffer(reader->getDecompressedSize(chunk_i), ::arrow::default_memory_pool()).ValueOrDie();
@@ -87,6 +85,7 @@ RecordBatchStreamReader::RecordBatchStreamReader(
       dir(std::move(directory)), chunks(row_group_indices) {
   auto tempSchema = util::CreateSchemaFromFileMetadata(file_metadata);
 
+  read_states.reserve(column_indices.size());
   std::vector<std::shared_ptr<::arrow::Field>> fields;
   for (int column_index : column_indices) {
     read_states.emplace_back(file_metadata, column_index, row_group_indices[0], dir);

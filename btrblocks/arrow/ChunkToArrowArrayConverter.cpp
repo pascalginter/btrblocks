@@ -4,7 +4,6 @@
 //--------------------------------------------------------------------------------------------------
 namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunkNoCopy(
     std::shared_ptr<::arrow::Buffer>&& buffer, u32 tupleCount, BitmapWrapper* bitmap){
   StringArrayViewer viewer(buffer->data());
