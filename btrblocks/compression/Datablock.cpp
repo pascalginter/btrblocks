@@ -85,19 +85,19 @@ u32 Datablock::writeMetadata(const std::string& path,
   return bytes_written;
 }
 // -------------------------------------------------------------------------------------
-std::vector<u8> Datablock::compress(const InputChunk& input_chunk) {
+std::vector<u8> Datablock::compress(const InputChunk& input_chunk, MinMaxStats& sma) {
   // We do not now the exact output size. Therefore we allocate too much and
   // then simply make the space smaller afterwards
   const u32 size =
       sizeof(ColumnChunkMeta) + 10 * input_chunk.size + sizeof(BITMAP) * input_chunk.tuple_count;
   std::vector<u8> output(size);
-  auto total_size = compress(input_chunk, output.data());
+  auto total_size = compress(input_chunk, output.data(), sma);
   // Resize the output vector to the actual used size
   output.resize(total_size);
   return output;
 }
 // -------------------------------------------------------------------------------------
-SIZE Datablock::compress(const InputChunk& input_chunk, u8* output) {
+SIZE Datablock::compress(const InputChunk& input_chunk, u8* output, MinMaxStats& sma) {
   auto& cfg = BtrBlocksConfig::get();
   auto meta = reinterpret_cast<ColumnChunkMeta*>(output);
   meta->tuple_count = input_chunk.tuple_count;
@@ -107,18 +107,20 @@ SIZE Datablock::compress(const InputChunk& input_chunk, u8* output) {
 
   switch (input_chunk.type) {
     case ColumnType::INTEGER: {
-      IntegerSchemePicker::compress(reinterpret_cast<INTEGER*>(input_chunk.data.get()),
+      const auto stats = IntegerSchemePicker::compress(reinterpret_cast<INTEGER*>(input_chunk.data.get()),
                                     input_chunk.nullmap.get(), output_data, input_chunk.tuple_count,
                                     cfg.integers.max_cascade_depth, meta->nullmap_offset,
                                     meta->compression_type);
+      sma = MinMaxStats(stats);
       break;
     }
     case ColumnType::DOUBLE: {
       // -------------------------------------------------------------------------------------
-      DoubleSchemePicker::compress(reinterpret_cast<DOUBLE*>(input_chunk.data.get()),
+      const auto stats = DoubleSchemePicker::compress(reinterpret_cast<DOUBLE*>(input_chunk.data.get()),
                                    input_chunk.nullmap.get(), output_data, input_chunk.tuple_count,
                                    cfg.doubles.max_cascade_depth, meta->nullmap_offset,
                                    meta->compression_type);
+      sma = MinMaxStats(stats);
       // -------------------------------------------------------------------------------------
       break;
     }
@@ -159,6 +161,7 @@ SIZE Datablock::compress(const InputChunk& input_chunk, u8* output) {
                             estimated_cf, stats.total_size, after_column_size, stats.unique_count,
                             "?");
       ThreadCache::get().compression_level--;
+      sma = MinMaxStats(stats);
       // -------------------------------------------------------------------------------------
       break;
     }

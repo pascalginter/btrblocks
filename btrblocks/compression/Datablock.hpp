@@ -3,6 +3,7 @@
 #include "compression/Compressor.hpp"
 #include "scheme/CompressionScheme.hpp"
 #include "storage/Chunk.hpp"
+#include "stats/MinMaxStats.hpp"
 // -------------------------------------------------------------------------------------
 #include <unordered_map>
 // -------------------------------------------------------------------------------------
@@ -89,14 +90,14 @@ class Datablock : public RelationCompressor {
   virtual void getCompressedColumn(const BytesArray& input_db, u32 col_i, u8*& ptr, u32& size);
 
   static bool decompress(const u8* data_in, BitmapWrapper** bitmap_out, u8* data_out);
-  static vector<u8> compress(const InputChunk& input_chunk);
+  static vector<u8> compress(const InputChunk& input_chunk, MinMaxStats& sma);
   static u32 writeMetadata(const std::string& path,
                            std::vector<ColumnType> types,
                            vector<vector<u32>> part_counters,
                            vector<ColumnChunkInfo> chunk_infos,
                            u32 num_chunks);
 
-  static SIZE compress(const InputChunk& input_chunk, u8* output_buffer);
+  static SIZE compress(const InputChunk& input_chunk, u8* output_buffer, MinMaxStats& sma);
 };
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks

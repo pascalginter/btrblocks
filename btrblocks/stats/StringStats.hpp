@@ -20,6 +20,9 @@ struct StringStats {
   u32 unique_count;
   u32 set_count;
   // -------------------------------------------------------------------------------------
+  std::string min;
+  std::string max;
+  // -------------------------------------------------------------------------------------
   static StringStats generateStats(const StringArrayViewer src,
                                    const BITMAP* nullmap,
                                    u32 tuple_count,

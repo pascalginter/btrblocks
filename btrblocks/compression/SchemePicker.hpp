@@ -67,7 +67,7 @@ class CSchemePicker {
     }
   }
   // -------------------------------------------------------------------------------------
-  static void compress(const Type* src,
+  static StatsType compress(const Type* src,
                        const BITMAP* nullmap,
                        u8* dest,
                        u32 tuple_count,
@@ -218,6 +218,7 @@ class CSchemePicker {
       // }
     }
     ThreadCache::get().compression_level--;
+    return stats;
   }
 };
 // -------------------------------------------------------------------------------------
