@@ -6,6 +6,7 @@ include(ExternalProject)
 find_package(Git REQUIRED)
 
 message(WARNING "ARROW IS BEING USED")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG")
 
 # Get arrow
 ExternalProject_Add(
