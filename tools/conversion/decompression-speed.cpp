@@ -13,6 +13,7 @@
 #include "compression/BtrReader.hpp"
 #include "scheme/SchemePool.hpp"
 #include "arrow/DirectoryReader.hpp"
+#include "arrow/ColumnStreamReader.hpp"
 // -------------------------------------------------------------------------------------
 DEFINE_string(btr, "btr", "Directory with btr input");
 DEFINE_int32(threads, 1, "Number of threads used. not specifying lets tbb decide");
@@ -92,31 +93,25 @@ u64 measure_single_thread(const FileMetadata *metadata, std::vector<std::vector<
     return total_runtime.count();
 }
 // -------------------------------------------------------------------------------------
-u64 measure_arrow_single_thread(btrblocks::arrow::DirectoryReader& reader, std::vector<u64> &runtimes, std::vector<u32> &columns){
+u64 measure_arrow_single_thread(std::string path, btrblocks::arrow::DirectoryReader& reader, std::vector<u64> &runtimes, std::vector<u32> &columns){
   std::cout << "arrow measurement" << std::endl;
 
   std::shared_ptr<::arrow::Schema> schema;
   auto status = reader.GetSchema(&schema);
   assert(status.ok());
   // load data into memory
-  std::vector readers(columns.size(),
-    std::vector<std::shared_ptr<::arrow::RecordBatchReader>>(reader.num_row_groups(), nullptr));
-  int i=0;
-  for (int column : columns) {
-    for (int j=0; j!=reader.num_row_groups(); j++) {
-      status = reader.GetRecordBatchReader({j}, {column}, &readers[i][j]);
-      assert(status.ok());
-    }
-    i++;
+  std::vector<btrblocks::arrow::ColumnStreamReader> readers;
+  for (u32 column : columns) {
+    readers.emplace_back(path, reader.metadata(), column);
   }
 
   auto total_start_time = std::chrono::steady_clock::now();
-  std::shared_ptr<::arrow::RecordBatch> batch;
+  std::shared_ptr<::arrow::Array> arr;
   for (int i=0; i!=columns.size(); i++) {
     assert(status.ok());
     for (int chunk_i = 0; chunk_i < reader.num_row_groups(); chunk_i++) {
       auto start_time = std::chrono::steady_clock::now();
-      status = readers[i][chunk_i]->ReadNext(&batch);
+      status = readers[i].Read(chunk_i, &arr);
       assert(status.ok());
       auto end_time = std::chrono::steady_clock::now();
       auto runtime = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
@@ -221,7 +216,7 @@ int main(int argc, char **argv) {
     if (threads == 1) {
       if (FLAGS_arrow) {
         btrblocks::arrow::DirectoryReader directoryReader(btr_dir);
-        total_runtime = measure_arrow_single_thread(directoryReader, runtimes, columns);
+        total_runtime = measure_arrow_single_thread(btr_dir, directoryReader, runtimes, columns);
       }else {
         total_runtime = measure_single_thread(file_metadata, readers, runtimes, columns);
       }

@@ -10,13 +10,10 @@
 // ------------------------------------------------------------------------------
 DEFINE_string(btr, "btr", "Directory for btr input");
 DEFINE_string(parquet, "parquet", "Parquet output file");
-DEFINE_string(writer_properties, "default", "Parquet writer properties");
+DEFINE_string(writer_properties, "snappy", "Parquet writer properties");
 // ------------------------------------------------------------------------------
 std::shared_ptr<parquet::WriterProperties> getWriterProperties() {
   parquet::WriterProperties::Builder props;
-  if (FLAGS_writer_properties == "default") {
-    return props.build();
-  }
   props.compression(arrow::Compression::SNAPPY);
   if (FLAGS_writer_properties == "snappy") {
     return props.build();
@@ -58,6 +55,6 @@ int main(int argc, char** argv){
     std::cout << status << "\n";
     exit(1);
   }
-  std::cout << "Wrote parquet data successfully\n";
+  std::cout << "Wrote parquet data successfully " << FLAGS_parquet << std::endl;
   return 0;
 }
