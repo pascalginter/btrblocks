@@ -13,17 +13,15 @@ ColumnReadState::ColumnReadState(
   advance(chunk_i);
 }
 //--------------------------------------------------------------------------------------------------
-template <typename T, typename U>
+template <typename T>
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ColumnReadState::decompressNumericChunk(){
   auto outputBuffer = ::arrow::AllocateBuffer(reader->getDecompressedSize(chunk_i), ::arrow::default_memory_pool()).ValueOrDie();
   const bool requiresCopy = reader->readColumn(outputBuffer->mutable_data(), chunk_i);
   assert(!requiresCopy);
   const u32 tupleCount = reader->getTupleCount(chunk_i);
   auto* bitmap = reader->getBitmap(chunk_i);
-  std::vector<u8> validityBytes(tupleCount);
-  bitmap->writeValidityBytes(validityBytes.data());
-  return ChunkToArrowArrayConverter::convertNumericChunk<T, U>(
-    reinterpret_cast<U*>(outputBuffer->mutable_data()), tupleCount, validityBytes.data());
+  return ChunkToArrowArrayConverter::convertNumericChunk<T>(
+    std::move(outputBuffer), tupleCount, bitmap);
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ColumnReadState::decompressStringChunk(){
@@ -41,9 +39,9 @@ template <typename T, typename U>
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ColumnReadState::decompressCurrentChunk() {
   switch (column_info.type) {
     case ColumnType::INTEGER:
-      return decompressNumericChunk<::arrow::Int32Type, int32_t>();
+      return decompressNumericChunk<::arrow::Int32Type>();
     case ColumnType::DOUBLE:
-      return decompressNumericChunk<::arrow::DoubleType, double>();
+      return decompressNumericChunk<::arrow::DoubleType>();
     case ColumnType::STRING:
       return decompressStringChunk();
     default:

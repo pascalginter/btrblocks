@@ -9,6 +9,18 @@ namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
 struct ChunkToArrowArrayConverter {
   // -----------------------------------------------------------------------------------------------
+  template <typename T>
+  static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertNumericChunk(
+    std::shared_ptr<::arrow::Buffer>&& buffer, u32 num_elements, BitmapWrapper* bitmap) {
+    auto null_bitmap = ::arrow::AllocateBitmap(num_elements, ::arrow::default_memory_pool()).ValueOrDie();
+    bitmap->writeArrowBitmap(null_bitmap->mutable_data());
+    auto array_data = ::arrow::ArrayData::Make(
+      ::arrow::TypeTraits<T>::type_singleton(), num_elements,
+      {null_bitmap, buffer, nullptr}
+    );
+    return ::arrow::MakeArray(array_data);
+  }
+
   template <typename T, typename U>
   static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertNumericChunk(
       U* data, u32 num_elements, unsigned char* bitmap) {

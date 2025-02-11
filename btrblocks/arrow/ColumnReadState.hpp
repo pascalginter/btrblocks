@@ -21,7 +21,7 @@ class ColumnReadState {
 
     std::string path_prefix;
 
-    template <typename T, typename U>
+    template <typename T>
     ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressNumericChunk();
     ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressStringChunk();
   public:
