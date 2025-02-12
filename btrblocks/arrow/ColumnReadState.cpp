@@ -71,6 +71,7 @@ void ColumnReadState::advance(int next_chunk_i) {
 void ColumnReadState::reset() {
   part_i = -1;
   chunk_i = -1;
+  global_chunk_i = -1;
 }
 
 //--------------------------------------------------------------------------------------------------

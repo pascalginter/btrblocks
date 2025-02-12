@@ -9,7 +9,6 @@ namespace btrblocks::arrow {
 class ColumnReadState {
     std::vector<char> buffer;
 
-    int chunk_index = 0;
     int global_chunk_i = -1;
     int chunk_i = -1;
     int part_i = -1;
