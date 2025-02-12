@@ -29,6 +29,7 @@ class ColumnReadState {
 
     ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressCurrentChunk();
     void advance(int chunk_i);
+    void reset();
   };
 //--------------------------------------------------------------------------------------------------
 } // namespace btrblocks::arrow
