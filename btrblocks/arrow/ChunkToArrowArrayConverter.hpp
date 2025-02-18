@@ -16,7 +16,7 @@ struct ChunkToArrowArrayConverter {
     bitmap->writeArrowBitmap(null_bitmap->mutable_data());
     auto array_data = ::arrow::ArrayData::Make(
       ::arrow::TypeTraits<T>::type_singleton(), num_elements,
-      {null_bitmap, buffer, nullptr}
+      {null_bitmap, buffer}
     );
     return ::arrow::MakeArray(array_data);
   }

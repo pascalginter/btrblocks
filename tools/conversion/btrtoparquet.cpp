@@ -10,14 +10,31 @@
 // ------------------------------------------------------------------------------
 DEFINE_string(btr, "btr", "Directory for btr input");
 DEFINE_string(parquet, "parquet", "Parquet output file");
-DEFINE_string(writer_properties, "snappy", "Parquet writer properties");
+DEFINE_string(writer_properties, "SNAPPY", "Parquet writer properties");
 // ------------------------------------------------------------------------------
 std::shared_ptr<parquet::WriterProperties> getWriterProperties() {
   parquet::WriterProperties::Builder props;
   props.compression(arrow::Compression::SNAPPY);
-  if (FLAGS_writer_properties == "snappy") {
+  if (FLAGS_writer_properties == "SNAPPY") {
     return props.build();
   }
+  props.compression(arrow::Compression::GZIP);
+  if (FLAGS_writer_properties == "GZIP") {
+    return props.build();
+  }
+  props.compression(arrow::Compression::BROTLI);
+  if (FLAGS_writer_properties == "BROTLI") {
+    return props.build();
+  }
+  props.compression(arrow::Compression::ZSTD);
+  if (FLAGS_writer_properties == "ZSTD") {
+    return props.build();
+  }
+  props.compression(arrow::Compression::LZ4);
+  if (FLAGS_writer_properties == "LZ4") {
+    return props.build();
+  }
+
   props.compression(arrow::Compression::UNCOMPRESSED);
   if (FLAGS_writer_properties == "uncompressed") {
     return props.build();

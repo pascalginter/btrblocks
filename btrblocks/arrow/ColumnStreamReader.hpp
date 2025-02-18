@@ -19,14 +19,14 @@ public:
       state.reset();
     }
     state.advance(chunk_i);
-     auto result = state.decompressCurrentChunk();
-     if (result.ok()){
-       *array = result.ValueOrDie();
-       last_chunk = chunk_i;
-       return ::arrow::Status::OK();
-     }
-     array = nullptr;
-     return result.status();
+    auto result = state.decompressCurrentChunk();
+    if (result.ok()){
+      *array = result.ValueOrDie();
+      last_chunk = chunk_i;
+      return ::arrow::Status::OK();
+    }
+    array = nullptr;
+    return result.status();
   }
 };
 //--------------------------------------------------------------------------------------------------

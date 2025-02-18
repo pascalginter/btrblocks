@@ -23,7 +23,11 @@ ExternalProject_Add(
         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
         -DCMAKE_BUILD_TYPE=Release
         -DARROW_PARQUET=ON
+        -DARROW_WITH_BROTLI=ON
         -DARROW_WITH_SNAPPY=ON
+        -DARROW_WITH_ZLIB=ON
+        -DARROW_WITH_ZSTD=ON
+        -DARROW_WITH_LZ4=ON
         UPDATE_COMMAND ""
 )
 
