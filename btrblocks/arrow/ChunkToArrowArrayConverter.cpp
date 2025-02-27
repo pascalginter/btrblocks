@@ -38,9 +38,10 @@ namespace btrblocks::arrow {
   auto offsets_buffer = ::arrow::SliceMutableBuffer(buffer, viewer_offset,
     (unique_tuple_count + 1) * sizeof(INTEGER));
   auto* offsets = offsets_buffer->mutable_data_as<INTEGER>();
-  for (int i=0; i<=unique_tuple_count; i++) {
+  for (int i=1; i<=unique_tuple_count; i++) {
     offsets[i] -= offsets[0];
   }
+  offsets[0] = 0;
 
   auto null_bitmap = ::arrow::AllocateBitmap(tupleCount, ::arrow::default_memory_pool()).ValueOrDie();
   bitmap->writeArrowBitmap(null_bitmap->mutable_data());
