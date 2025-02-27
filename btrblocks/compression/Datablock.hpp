@@ -2,10 +2,8 @@
 // -------------------------------------------------------------------------------------
 #include "compression/Compressor.hpp"
 #include "scheme/CompressionScheme.hpp"
+#include "stats/ChunkStats.hpp"
 #include "storage/Chunk.hpp"
-#include "stats/MinMaxStats.hpp"
-// -------------------------------------------------------------------------------------
-#include <unordered_map>
 // -------------------------------------------------------------------------------------
 namespace btrblocks {
 // -------------------------------------------------------------------------------------
@@ -26,6 +24,8 @@ struct ColumnChunkInfo {
   u64 min_value;
   u64 max_value;
   u64 tuple_count;
+  s32 unique_tuple_count;
+  u32 total_unique_length;
 };
 
 struct ColumnPartInfo {
@@ -90,14 +90,14 @@ class Datablock : public RelationCompressor {
   virtual void getCompressedColumn(const BytesArray& input_db, u32 col_i, u8*& ptr, u32& size);
 
   static bool decompress(const u8* data_in, BitmapWrapper** bitmap_out, u8* data_out);
-  static vector<u8> compress(const InputChunk& input_chunk, MinMaxStats& sma);
+  static vector<u8> compress(const InputChunk& input_chunk, ChunkStats& sma);
   static u32 writeMetadata(const std::string& path,
                            std::vector<ColumnType> types,
                            vector<vector<u32>> part_counters,
                            vector<ColumnChunkInfo> chunk_infos,
                            u32 num_chunks);
 
-  static SIZE compress(const InputChunk& input_chunk, u8* output_buffer, MinMaxStats& sma);
+  static SIZE compress(const InputChunk& input_chunk, u8* output_buffer, ChunkStats& sma);
 };
 // -------------------------------------------------------------------------------------
 }  // namespace btrblocks

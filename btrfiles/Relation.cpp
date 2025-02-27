@@ -99,7 +99,7 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
       }
 
       auto input_chunk = relation.getInputChunk(ranges[chunk_i], chunk_i, column_i);
-      MinMaxStats stats;
+      ChunkStats stats;
       std::vector<u8> data = Datablock::compress(input_chunk, stats);
       sizes_uncompressed[column_i] += input_chunk.size;
       ColumnChunkInfo info{
@@ -107,6 +107,8 @@ void writeDirectory(const Relation& relation, std::string btr_dir, std::string s
         .min_value = stats.min,
         .max_value = stats.max,
         .tuple_count = input_chunk.tuple_count,
+        .unique_tuple_count = stats.unique_tuple_count,
+        .total_unique_length = stats.total_unique_length
       };
       chunk_infos.push_back(info);
 

@@ -14,12 +14,8 @@
 #include "extern/RoaringBitmap.hpp"
 // -------------------------------------------------------------------------------------
 #include <algorithm>
-#include <exception>
 #include <fstream>
-#include <limits>
-#include <numeric>
 #include <roaring/roaring.hh>
-#include <set>
 // -------------------------------------------------------------------------------------
 namespace btrblocks {
 // -------------------------------------------------------------------------------------
@@ -85,7 +81,7 @@ u32 Datablock::writeMetadata(const std::string& path,
   return bytes_written;
 }
 // -------------------------------------------------------------------------------------
-std::vector<u8> Datablock::compress(const InputChunk& input_chunk, MinMaxStats& sma) {
+std::vector<u8> Datablock::compress(const InputChunk& input_chunk, ChunkStats& sma) {
   // We do not now the exact output size. Therefore we allocate too much and
   // then simply make the space smaller afterwards
   const u32 size =
@@ -97,7 +93,7 @@ std::vector<u8> Datablock::compress(const InputChunk& input_chunk, MinMaxStats& 
   return output;
 }
 // -------------------------------------------------------------------------------------
-SIZE Datablock::compress(const InputChunk& input_chunk, u8* output, MinMaxStats& sma) {
+SIZE Datablock::compress(const InputChunk& input_chunk, u8* output, ChunkStats& sma) {
   auto& cfg = BtrBlocksConfig::get();
   auto meta = reinterpret_cast<ColumnChunkMeta*>(output);
   meta->tuple_count = input_chunk.tuple_count;
@@ -111,7 +107,7 @@ SIZE Datablock::compress(const InputChunk& input_chunk, u8* output, MinMaxStats&
                                     input_chunk.nullmap.get(), output_data, input_chunk.tuple_count,
                                     cfg.integers.max_cascade_depth, meta->nullmap_offset,
                                     meta->compression_type);
-      sma = MinMaxStats(stats);
+      sma = ChunkStats(stats);
       break;
     }
     case ColumnType::DOUBLE: {
@@ -120,7 +116,7 @@ SIZE Datablock::compress(const InputChunk& input_chunk, u8* output, MinMaxStats&
                                    input_chunk.nullmap.get(), output_data, input_chunk.tuple_count,
                                    cfg.doubles.max_cascade_depth, meta->nullmap_offset,
                                    meta->compression_type);
-      sma = MinMaxStats(stats);
+      sma = ChunkStats(stats);
       // -------------------------------------------------------------------------------------
       break;
     }
@@ -161,7 +157,7 @@ SIZE Datablock::compress(const InputChunk& input_chunk, u8* output, MinMaxStats&
                             estimated_cf, stats.total_size, after_column_size, stats.unique_count,
                             "?");
       ThreadCache::get().compression_level--;
-      sma = MinMaxStats(stats);
+      sma = ChunkStats(stats);
       // -------------------------------------------------------------------------------------
       break;
     }
