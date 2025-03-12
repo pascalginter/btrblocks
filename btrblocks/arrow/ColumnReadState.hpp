@@ -7,7 +7,7 @@
 namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
 class ColumnReadState {
-    std::vector<char> buffer;
+    std::vector<char*> parts;
 
     int global_chunk_i = -1;
     int chunk_i = -1;
@@ -23,6 +23,8 @@ class ColumnReadState {
     template <typename T>
     ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressNumericChunk();
     ::arrow::Result<std::shared_ptr<::arrow::Array>> decompressStringChunk();
+
+    static char* mmapFile(std::string fileName);
   public:
     ColumnReadState(const FileMetadata* file_metadata, int column_i, int chunk_i, const std::string& dir);
 
