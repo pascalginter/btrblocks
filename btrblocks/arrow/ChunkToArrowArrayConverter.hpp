@@ -9,6 +9,8 @@ namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
 struct ChunkToArrowArrayConverter {
   // -----------------------------------------------------------------------------------------------
+  static const std::shared_ptr<::arrow::DataType>  dictionary_type;
+  // -----------------------------------------------------------------------------------------------
   template <typename T>
   static ::arrow::Result<std::shared_ptr<::arrow::Array>> convertNumericChunk(
     std::shared_ptr<::arrow::Buffer>&& buffer, u32 num_elements, BitmapWrapper* bitmap) {

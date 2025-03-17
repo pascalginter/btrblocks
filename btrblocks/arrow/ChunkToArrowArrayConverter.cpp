@@ -56,7 +56,7 @@ namespace btrblocks::arrow {
     {nullptr, std::move(offsets_buffer), std::move(char_buffer)}
   );
   auto dictionary_array = ::arrow::MakeArray(dictionary_array_data);
-  return ::arrow::DictionaryArray::FromArrays(index_array, dictionary_array).ValueOrDie();
+  return std::make_shared<::arrow::DictionaryArray>(dictionary_type, index_array, dictionary_array);
 }
 //--------------------------------------------------------------------------------------------------
 ::arrow::Result<std::shared_ptr<::arrow::Array>> ChunkToArrowArrayConverter::convertStringChunk(
@@ -72,7 +72,9 @@ namespace btrblocks::arrow {
   }
   return builder.Finish();
 }
-
+//--------------------------------------------------------------------------------------------------
+const std::shared_ptr<::arrow::DataType> ChunkToArrowArrayConverter::dictionary_type =
+  ::arrow::dictionary(::arrow::int32(), ::arrow::utf8());
 //--------------------------------------------------------------------------------------------------
 } // namespace btrblocks::arrow
 //--------------------------------------------------------------------------------------------------
