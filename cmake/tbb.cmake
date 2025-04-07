@@ -14,8 +14,8 @@ ExternalProject_Add(
     TIMEOUT 10
     BUILD_COMMAND  make
     UPDATE_COMMAND "" # to prevent rebuilding everytime
-    INSTALL_COMMAND ""
     CMAKE_ARGS
+    -DTBB_TEST=OFF
     -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/vendor/intel
     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -23,12 +23,17 @@ ExternalProject_Add(
     -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
 )
 
-# Prepare json
-ExternalProject_Get_Property(tbb_src source_dir)
-ExternalProject_Get_Property(tbb_src binary_dir)
+# Prepare tbb
+# ExternalProject_Get_Property(tbb_src source_dir)
+# ExternalProject_Get_Property(tbb_src binary_dir)
+ExternalProject_Get_Property(tbb_src install_dir)
 
-set(TBB_INCLUDE_DIR ${source_dir}/include)
-set(TBB_LIBRARY_PATH ${binary_dir}/gnu_13.2_cxx11_64_relwithdebinfo/libtbb.so)
+set(TBB_INCLUDE_DIR ${install_dir}/include)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(TBB_LIBRARY_PATH ${install_dir}/lib/libtbb_debug.so)
+else()
+    set(TBB_LIBRARY_PATH ${install_dir}/lib/libtbb.so)
+endif()
 
 file(MAKE_DIRECTORY ${TBB_INCLUDE_DIR})
 
