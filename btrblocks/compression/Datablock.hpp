@@ -37,6 +37,8 @@ struct ColumnInfo {
   ColumnType type;
   u32 part_offset;   // Offset into the flat parts array
   u32 num_parts;
+
+  bool operator<(const ColumnInfo& other) const { return part_offset < other.part_offset; }
 };
 
 struct FileMetadata {

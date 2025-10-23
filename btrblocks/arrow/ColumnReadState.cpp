@@ -1,34 +1,31 @@
+#include <aws/s3/model/GetObjectRequest.h>
+#include <aws/s3/model/HeadObjectRequest.h>
+#include <aws/s3/S3Errors.h>
+
 #include "ColumnReadState.hpp"
 #include "ChunkToArrowArrayConverter.hpp"
 #include "common/Utils.hpp"
 //--------------------------------------------------------------------------------------------------
 namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
-char* ColumnReadState::mmapFile(std::string fileName) {
-  int fd = open(fileName.c_str(), O_RDONLY);
-  if (fd == -1) {
-    perror("open");
-    return nullptr;
+const std::string ColumnReadState::bucket = "";
+ColumnReadStateCache ColumnReadState::shared_state = {};
+thread_local Aws::S3::S3Client ColumnReadState::client = {};
+//--------------------------------------------------------------------------------------------------
+char* ColumnReadState::fetchFile(std::string fileName) {
+  Aws::S3::Model::GetObjectRequest request;
+  request.SetBucket(bucket);
+  request.SetKey(fileName);
+  char* result;
+  if (const auto outcome = client.GetObject(request); outcome.IsSuccess()) {
+    const size_t length = outcome.GetResult().GetContentLength();
+    result = static_cast<char*>(malloc(length));
+    outcome.GetResult().GetBody().read(result, length);
+    return result;
+  } else {
+    std::cout << outcome.GetError().GetMessage().c_str() << std::endl;
+    exit(1);
   }
-
-  struct stat sb;
-  if (fstat(fd, &sb) == -1) {
-    perror("fstat");
-    close(fd);
-    return nullptr;
-  }
-  size_t size = sb.st_size; // Determine file size
-
-  void* mapped = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
-  if (mapped == MAP_FAILED) {
-    perror("mmap");
-    close(fd);
-    return nullptr;
-  }
-
-  close(fd);  // The mapping remains valid even after closing
-
-  return static_cast<char*>(mapped);
 }
 //--------------------------------------------------------------------------------------------------
 ColumnReadState::ColumnReadState(
@@ -38,9 +35,8 @@ ColumnReadState::ColumnReadState(
     metadata(file_metadata),
     path_prefix(dir + "/" + "column" + std::to_string(column_i) + "_part"){
   advance(chunk_i);
-  parts.resize(column_info.num_parts);
-  for (int i=0; i!=column_info.num_parts; i++) {
-    parts[i] = mmapFile(path_prefix + std::to_string(i));
+  if (shared_state.parts_cache.find(column_info) == shared_state.parts_cache.end()) {
+    shared_state.parts_cache[column_info] = std::vector<char*>(column_info.num_parts, nullptr);
   }
 }
 //--------------------------------------------------------------------------------------------------
@@ -93,7 +89,10 @@ void ColumnReadState::advance(int next_chunk_i) {
     global_chunk_i++;
   }
   if (part_i_changed) {
-    reader = BtrReader(parts[part_i]);
+    if (shared_state.parts_cache[column_info][part_i] == nullptr) {
+      shared_state.parts_cache[column_info][part_i] = fetchFile(path_prefix + std::to_string(part_i));
+    }
+    reader = BtrReader(shared_state.parts_cache[column_info][part_i]);
   }
 }
 //--------------------------------------------------------------------------------------------------
