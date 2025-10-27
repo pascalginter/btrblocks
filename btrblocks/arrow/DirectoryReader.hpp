@@ -13,7 +13,7 @@
 
 namespace btrblocks::arrow {
 class DirectoryReader {
-  std::filesystem::path btr_dir;
+  std::string btr_dir;
 
   std::shared_ptr<::arrow::Schema> schema;
 

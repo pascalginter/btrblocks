@@ -19,7 +19,8 @@ DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
     Aws::S3::S3Client client;
     Aws::S3::Model::GetObjectRequest request;
     request.SetBucket("adl-tpch");
-    request.SetKey(btr_dir / "metadata");
+    request.SetKey(btr_dir + "/metadata");
+    std::cout << "Requested key " << request.GetKey().c_str() << std::endl;
     if (const auto outcome = client.GetObject(request); outcome.IsSuccess()) {
       const size_t length = outcome.GetResult().GetContentLength();
       char* result = static_cast<char*>(malloc(length));
