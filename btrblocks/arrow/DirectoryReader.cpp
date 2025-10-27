@@ -4,6 +4,11 @@
 #include "compression/BtrReader.hpp"
 #include "compression/Datablock.hpp"
 
+#include <aws/core/Aws.h>
+#include <aws/s3/S3Client.h>
+#include <aws/s3/model/GetObjectRequest.h>
+#include <aws/s3/S3Errors.h>
+
 #include <numeric>
 
 namespace btrblocks::arrow {
@@ -11,9 +16,19 @@ namespace btrblocks::arrow {
 DirectoryReader::DirectoryReader(std::string dir) : btr_dir{dir}{
   // Read the metadata
   {
-    auto metadata_path = btr_dir / "metadata";
-    Utils::readFileToMemory(metadata_path.string(), raw_file_metadata);
-    file_metadata = FileMetadata::fromMemory(raw_file_metadata.data());
+    Aws::S3::S3Client client;
+    Aws::S3::Model::GetObjectRequest request;
+    request.SetBucket(dir);
+    request.SetKey(btr_dir / "metadata");
+    if (const auto outcome = client.GetObject(request); outcome.IsSuccess()) {
+      const size_t length = outcome.GetResult().GetContentLength();
+      char* result = static_cast<char*>(malloc(length));
+      outcome.GetResult().GetBody().read(result, length);
+      file_metadata = FileMetadata::fromMemory(result);
+    } else {
+      std::cout << outcome.GetError().GetMessage().c_str() << std::endl;
+      exit(1);
+    }
   }
 
   ::arrow::FieldVector fields;
