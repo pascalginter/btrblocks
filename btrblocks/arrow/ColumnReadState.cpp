@@ -8,7 +8,7 @@
 //--------------------------------------------------------------------------------------------------
 namespace btrblocks::arrow {
 //--------------------------------------------------------------------------------------------------
-const std::string ColumnReadState::bucket = "";
+const std::string ColumnReadState::bucket = "adl-tpch";
 ColumnReadStateCache ColumnReadState::shared_state = {};
 thread_local Aws::S3::S3Client ColumnReadState::client = {};
 //--------------------------------------------------------------------------------------------------
